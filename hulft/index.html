@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HULFT10 運用コマンド リファレンス</title>
+<meta name="description" content="HULFT10 for Linux の構築・構成情報取得・性能情報取得・障害調査で使うコマンドを用途別に整理したリファレンス">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f8fb; --panel:#ffffff; --ink:#1b2430; --muted:#5b6778; --line:#e2e7ee;
+  --accent:#1f6feb; --accent-soft:#e8f0fe; --code-bg:#0f1b2d; --code-ink:#dbe6f5;
+  --kw:#7cc4ff; --cm:#7f93ad; --str:#f2c38a; --fn:#b7e28f; --warn:#b54708; --warn-bg:#fff4e5;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0d131c; --panel:#141c27; --ink:#e4eaf2; --muted:#9aa7b8; --line:#243041;
+    --accent:#5aa2ff; --accent-soft:#1a2a40; --code-bg:#0a111b; --warn:#f5a25a; --warn-bg:#2a1d10; }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP",system-ui,sans-serif;line-height:1.7;font-size:15px}
+header.top{position:sticky;top:0;z-index:10;background:var(--panel);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+header.top h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.02em}
+header.top h1 span{color:var(--accent)}
+header.top a.home{color:var(--muted);text-decoration:none;font-size:13px;border:1px solid var(--line);padding:4px 10px;border-radius:6px}
+header.top a.home:hover{color:var(--accent);border-color:var(--accent)}
+.search{flex:1;min-width:220px;max-width:460px;margin-left:auto;position:relative}
+.search input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.5}
+.layout{display:grid;grid-template-columns:260px 1fr;max-width:1320px;margin:0 auto}
+nav.toc{position:sticky;top:62px;align-self:start;height:calc(100vh - 62px);overflow:auto;padding:24px 16px 40px 24px;border-right:1px solid var(--line)}
+nav.toc .grp{font-size:12px;color:var(--muted);font-weight:700;margin:18px 0 6px;letter-spacing:.05em}
+nav.toc a{display:block;color:var(--ink);text-decoration:none;padding:4px 10px;border-radius:6px;font-size:14px}
+nav.toc a:hover{background:var(--accent-soft);color:var(--accent)}
+nav.toc a .n{display:inline-block;width:24px;color:var(--muted);font-size:12px}
+main{padding:28px 36px 80px;min-width:0}
+.hero{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 26px;margin-bottom:28px}
+.hero h2{margin:0 0 6px;font-size:22px}
+.hero p{margin:6px 0;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tag{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--bg)}
+.tag.au{border-color:#9ec5ff;color:#1f5fbf}
+.tag.is{border-color:#a6e3b8;color:#1d7a3d}
+.tag.adm{border-color:#f5c08a;color:#a1520f}
+@media (prefers-color-scheme: dark){.tag.au{color:#8fc0ff}.tag.is{color:#8fdca6}.tag.adm{color:#f5b072}}
+section.case{margin-top:44px}
+section.case>h2{font-size:21px;margin:0 0 4px;padding-bottom:8px;border-bottom:2px solid var(--accent);display:flex;gap:10px;align-items:baseline}
+section.case>h2 .num{color:var(--accent);font-size:15px;font-family:"JetBrains Mono",monospace}
+section.case>p.lead{color:var(--muted);margin:8px 0 16px}
+h3.sub{font-size:16px;margin:26px 0 10px;padding-left:10px;border-left:4px solid var(--accent)}
+.cmd{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:12px 0;overflow:hidden}
+.cmd .head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:12px 16px 6px}
+.cmd .title{font-weight:700;font-size:15px}
+.cmd .desc{color:var(--muted);font-size:13.5px;padding:0 16px 10px}
+.cmd .tags{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+.code{position:relative;background:var(--code-bg)}
+.code pre{margin:0;padding:14px 16px;overflow:auto;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px;line-height:1.6;color:var(--code-ink);tab-size:2}
+.code .copy{position:absolute;top:8px;right:8px;background:#243650;color:#dbe6f5;border:0;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;opacity:.8}
+.code .copy:hover{opacity:1}
+.k{color:var(--kw)} .c{color:var(--cm);font-style:italic} .s{color:var(--str)} .f{color:var(--fn)}
+.note{background:var(--warn-bg);border-left:4px solid var(--warn);padding:10px 14px;border-radius:6px;margin:12px 0;font-size:13.5px}
+.note b{color:var(--warn)}
+table.ref{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13.5px;margin:12px 0}
+table.ref th,table.ref td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.ref th{background:var(--accent-soft);font-weight:700}
+code.i{font-family:"JetBrains Mono",monospace;font-size:12.5px;background:var(--accent-soft);padding:1px 6px;border-radius:4px}
+.hidden{display:none!important}
+.empty{display:none;padding:30px;text-align:center;color:var(--muted)}
+footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);margin-top:60px;padding-top:16px}
+@media (max-width:900px){.layout{grid-template-columns:1fr}nav.toc{display:none}main{padding:20px 16px 60px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a href="../" class="home" title="トップへ戻る">← トップ</a>
+  <h1>HULFT10 <span>運用コマンド</span> リファレンス</h1>
+  <div class="search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="コマンド・用途で絞り込み（例:再送, utllist, 履歴）">
+  </div>
+</header>
+
+<div class="layout">
+<nav class="toc" aria-label="目次">
+  <div class="grp">基本ケース</div>
+  <a href="#build"><span class="n">01</span>構築時のコマンド</a><a href="#config"><span class="n">02</span>構築完了後の構成情報の取得</a><a href="#perf"><span class="n">03</span>性能情報の取得</a><a href="#trouble"><span class="n">04</span>障害時の調査</a>
+  <div class="grp">追加ケース</div><a href="#ops"><span class="n">05</span>日常運用・メンテナンス</a>
+  <div class="grp">付録</div>
+  <a href="#evidence"><span class="n">A</span>構成情報一括取得スクリプト</a>
+  <a href="#notes"><span class="n">B</span>利用上の注意</a>
+</nav>
+
+<main>
+<div class="hero">
+  <h2>このページについて</h2>
+  <p>HULFT10 for Linux/AIX の構築・運用で使うコマンドを、利用シーン別に整理したリファレンスです。右上の「コピー」ボタンでクリップボードに取得できます。</p>
+  <p><code class="i">'&lt;...&gt;'</code> 部分と、例として記載したホスト名・IPアドレス・パスは環境に合わせて置き換えてください。</p>
+  <p>対象バージョン：HULFT10 for Linux/AIX ／ 最終更新：2026年11月</p>
+  <div class="legend">
+    <span class="tag au">root</span><span style="font-size:12.5px;color:var(--muted)">… root権限（sudo）が必要</span>
+    <span class="tag is">pkg</span><span style="font-size:12.5px;color:var(--muted)">… 追加パッケージ・前提製品が必要な場合あり</span>
+    <span class="tag adm">注意</span><span style="font-size:12.5px;color:var(--muted)">… サービス影響・設定変更あり</span>
+  </div>
+</div>
+
+<div id="empty" class="empty">該当するコマンドが見つかりませんでした。</div>
+
+<!-- ================= 01 構築時のコマンド ================= -->
+<section class="case" id="build">
+<h2><span class="num">01</span>構築時のコマンド</h2>
+<p class="lead">インストール後の環境設定、デーモン起動、管理情報の登録で使うコマンドです。HULFT10 では管理情報を HULFT Management Console(Web)で操作できますが、標準化・自動化にはパラメータファイルを使った一括登録をおすすめします。</p>
+<h3 class="sub">1-1. 環境変数・環境設定ファイル</h3>
+<div class="cmd"><div class="head"><div class="title">実行モジュール格納ディレクトリを設定</div><div class="tags"></div></div>
+<div class="code"><pre>export HULEXEP=/usr/local/HULFT/bin</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">環境設定ファイル(hulenv.conf 等)格納ディレクトリを設定</div><div class="tags"></div></div>
+<div class="code"><pre>export HULPATH=/usr/local/HULFT/etc</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">HULFTコマンドにパスを通す</div><div class="tags"></div></div>
+<div class="code"><pre>export PATH=$HULEXEP:$PATH</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">システム動作環境設定(ポート番号・トレース出力・文字コード等)を編集</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>vi $HULPATH/hulenv.conf</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">配信/集信(既定30000)・要求受付(既定31000)ポートを許可</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>firewall-cmd --permanent --add-port={30000,31000}/tcp &amp;&amp; firewall-cmd --reload</pre></div></div>
+<h3 class="sub">1-2. デーモンの起動・自動起動</h3>
+<div class="cmd"><div class="head"><div class="title">配信デーモンを起動</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>hulsndd</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">集信デーモンを起動</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>hulrcvd</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">要求受付デーモンを起動</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>hulobsd</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">起動(start)・停止(stop)用スクリプトを作成(3デーモンを一括操作)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>vi /usr/local/bin/hulft</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">自動起動用のsystemdユニットを作成(ExecStart/ExecStop に上記スクリプト)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>vi /etc/systemd/system/hulft.service</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">OS起動時の自動起動を有効化</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>systemctl daemon-reload &amp;&amp; systemctl enable --now hulft</pre></div></div>
+<h3 class="sub">1-3. 管理情報の登録(パラメータファイル)</h3>
+<div class="cmd"><div class="head"><div class="title">詳細ホスト情報を一括登録</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>utliupdt -f /work/hst.prm</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">配信管理情報を一括登録</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>utliupdt -f /work/snd.prm</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">集信管理情報を一括登録</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>utliupdt -f /work/rcv.prm</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">既存IDを置き換えて登録(更新時)</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>utliupdt -f /work/snd.prm -r</pre></div></div>
+<h3 class="sub">1-4. 疎通・転送テスト</h3>
+<div class="cmd"><div class="head"><div class="title">配信要求(同期転送で結果を確認)</div><div class="tags"></div></div>
+<div class="code"><pre>utlsend -f &lt;FILEID&gt; -h &lt;相手ホスト&gt; -sync</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">集信側から送信要求(同期転送)</div><div class="tags"></div></div>
+<div class="code"><pre>utlrecv -f &lt;FILEID&gt; -h &lt;相手ホスト&gt; -sync</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">直前コマンドの終了コード確認(0=正常)</div><div class="tags"></div></div>
+<div class="code"><pre>echo $?</pre></div></div>
+</section>
+<!-- ================= 02 構築完了後の構成情報の取得 ================= -->
+<section class="case" id="config">
+<h2><span class="num">02</span>構築完了後の構成情報の取得</h2>
+<p class="lead">パラメータシート・完成図書の裏付けとして取得します。utligen で出力したパラメータファイルは、そのまま他環境への移行や差分比較に使えます。</p>
+<h3 class="sub">2-1. 管理情報</h3>
+<div class="cmd"><div class="head"><div class="title">詳細ホスト情報をパラメータファイルに出力</div><div class="tags"></div></div>
+<div class="code"><pre>utligen -f /tmp/hst.prm -i hst -id "*"</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">配信管理情報を出力</div><div class="tags"></div></div>
+<div class="code"><pre>utligen -f /tmp/snd.prm -i snd -id "*"</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">集信管理情報を出力</div><div class="tags"></div></div>
+<div class="code"><pre>utligen -f /tmp/rcv.prm -i rcv -id "*"</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ジョブ起動情報を出力</div><div class="tags"></div></div>
+<div class="code"><pre>utligen -f /tmp/job.prm -i job -id "*"</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">主要な管理情報を1ファイルに一括出力</div><div class="tags"></div></div>
+<div class="code"><pre>utligen -f /tmp/all.prm -i snd -id "*" -i rcv -id "*" -i hst -id "*" -i job -id "*" -i tgrp -id "*"</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">管理情報の関連(配信→ホスト・ジョブ等)を一覧表示</div><div class="tags"></div></div>
+<div class="code"><pre>utlidlist -i snd -id &lt;FILEID&gt; -l</pre></div></div>
+<h3 class="sub">2-2. 環境・プロセス</h3>
+<div class="cmd"><div class="head"><div class="title">システム動作環境設定</div><div class="tags"></div></div>
+<div class="code"><pre>cat $HULPATH/hulenv.conf</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">自動起動設定</div><div class="tags"></div></div>
+<div class="code"><pre>cat /etc/systemd/system/hulft.service /usr/local/bin/hulft</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">3デーモンの稼働確認</div><div class="tags"></div></div>
+<div class="code"><pre>ps -ef | grep -E "hulsndd|hulrcvd|hulobsd" | grep -v grep</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">待ち受けポート確認</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>ss -tlnp | grep -E ":(30000|31000)"</pre></div></div>
+</section>
+<!-- ================= 03 性能情報の取得 ================= -->
+<section class="case" id="perf">
+<h2><span class="num">03</span>性能情報の取得</h2>
+<p class="lead">転送実績(件数・サイズ・所要時間)と、転送中のリソース使用状況を確認します。</p>
+<h3 class="sub">3-1. 転送状況・実績</h3>
+<div class="cmd"><div class="head"><div class="title">配信中の状況(送信済みレコード数・バイト数)</div><div class="tags"></div></div>
+<div class="code"><pre>utlsdisp</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">集信中の状況</div><div class="tags"></div></div>
+<div class="code"><pre>utlrdisp</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">期間指定で配信履歴を一覧表示(開始・終了時刻、件数)</div><div class="tags"></div></div>
+<div class="code"><pre>utllist -s -from &lt;開始日&gt; -to &lt;終了日&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ファイルID指定で集信履歴を表示</div><div class="tags"></div></div>
+<div class="code"><pre>utllist -r -f &lt;FILEID&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">共通フォーマットで出力(集計・分析用)</div><div class="tags"></div></div>
+<div class="code"><pre>utllist -s -v84 &gt; /tmp/sndlog.txt</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">要求受付履歴(相手からの要求の受付状況)</div><div class="tags"></div></div>
+<div class="code"><pre>utlobslist -from &lt;開始日&gt; -to &lt;終了日&gt;</pre></div></div>
+<h3 class="sub">3-2. リソース</h3>
+<div class="cmd"><div class="head"><div class="title">HULFTプロセスのCPU・メモリ・I/O</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>pidstat -u -r -d -C "hul" 1 10</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">転送中のNICスループット</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>sar -n DEV 1 10</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">送受信ファイル格納ディスクのI/O負荷</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>iostat -xz 1 10</pre></div></div>
+</section>
+<!-- ================= 04 障害時の調査 ================= -->
+<section class="case" id="trouble">
+<h2><span class="num">04</span>障害時の調査</h2>
+<p class="lead">転送エラーは、履歴の完了コード(詳細コード)をエラーコード表と照合して原因を切り分けます。</p>
+<h3 class="sub">4-1. 状態確認</h3>
+<div class="cmd"><div class="head"><div class="title">デーモン停止の有無</div><div class="tags"></div></div>
+<div class="code"><pre>ps -ef | grep -E "hulsndd|hulrcvd|hulobsd" | grep -v grep</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">対象転送の完了コード・詳細コード</div><div class="tags"></div></div>
+<div class="code"><pre>utllist -s -f &lt;FILEID&gt; -h &lt;HOST&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">集信側の完了コード</div><div class="tags"></div></div>
+<div class="code"><pre>utllist -r -f &lt;FILEID&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">相手からの要求が届いているか確認</div><div class="tags"></div></div>
+<div class="code"><pre>utlobslist -h &lt;HOST&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">転送が滞留していないか確認</div><div class="tags"></div></div>
+<div class="code"><pre>utlsdisp; utlrdisp</pre></div></div>
+<h3 class="sub">4-2. ログ・通信</h3>
+<div class="cmd"><div class="head"><div class="title">起動・停止時のメッセージ(systemd経由)</div><div class="tags"></div></div>
+<div class="code"><pre>journalctl -u hulft --since today</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">syslog出力時のHULFTメッセージ(-s 指定で起動した場合)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>grep -i hul /var/log/messages</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">トレースログ・制御ファイルの更新状況(出力先は hulenv.conf で確認)</div><div class="tags"></div></div>
+<div class="code"><pre>ls -lt $HULPATH</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">相手の集信ポートへの疎通</div><div class="tags"><span class="tag is">pkg: nmap-ncat</span></div></div>
+<div class="code"><pre>nc -vz &lt;相手ホスト&gt; 30000</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">名前解決(詳細ホスト情報のホスト名と一致するか)</div><div class="tags"></div></div>
+<div class="code"><pre>getent hosts &lt;相手ホスト&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">HULFT通信のパケットキャプチャ</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: tcpdump</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>tcpdump -i any -nn port 30000 or port 31000 -w /tmp/hulft.pcap</pre></div></div>
+<h3 class="sub">4-3. 再送・リカバリ</h3>
+<div class="cmd"><div class="head"><div class="title">再送要求(中断箇所=チェックポイントから再送)</div><div class="tags"></div></div>
+<div class="code"><pre>utlrecv -r -h &lt;送信元ホスト&gt; -f &lt;FILEID&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">先頭から再送を要求</div><div class="tags"><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>utlrecv -r -h &lt;送信元ホスト&gt; -f &lt;FILEID&gt; -np</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">送信側から再配信</div><div class="tags"><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>utlsend -f &lt;FILEID&gt; -h &lt;HOST&gt; -sync</pre></div></div>
+<h3 class="sub">4-4. デーモンの再起動</h3>
+<div class="cmd"><div class="head"><div class="title">配信・集信・要求受付デーモンを停止</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>utlkillsnd; utlkillrcv; utlkillobs</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">3デーモンを再起動</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>hulsndd; hulrcvd; hulobsd</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">systemd管理の場合の一括再起動</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>systemctl restart hulft</pre></div></div>
+</section>
+<!-- ================= 05 日常運用・メンテナンス ================= -->
+<section class="case" id="ops">
+<h2><span class="num">05</span>日常運用・メンテナンス</h2>
+<p class="lead">履歴ファイルの肥大化防止や、定期的な管理情報のバックアップに使います。</p>
+<h3 class="sub">5-1. 履歴管理</h3>
+<div class="cmd"><div class="head"><div class="title">削除前に配信履歴を退避</div><div class="tags"></div></div>
+<div class="code"><pre>utllist -s -from &lt;日付&gt; -to &lt;日付&gt; &gt; /backup/sndlog_$(date +%Y%m%d).txt</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">指定日以前の配信履歴を削除(-r:集信、-a:両方、-i:対話モード)</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>utllog -s -to &lt;日付&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">前月分の配信・集信履歴を削除</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>utllog -a -lastmonth</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">集信準備完了通知(全ホストへ再送要求を発行、デーモン起動直後等)</div><div class="tags"></div></div>
+<div class="code"><pre>utlrecv -a</pre></div></div>
+<h3 class="sub">5-2. バックアップ</h3>
+<div class="cmd"><div class="head"><div class="title">環境設定・管理情報ファイルを退避(デーモン停止中に実施)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>tar czf /backup/hulft_etc_$(date +%F).tar.gz $HULPATH</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">管理情報をテキスト形式で退避(差分比較・移行用)</div><div class="tags"></div></div>
+<div class="code"><pre>utligen -f /backup/hulft_all_$(date +%F).prm -i snd -id "*" -i rcv -id "*" -i hst -id "*" -i job -id "*"</pre></div></div>
+</section>
+
+<!-- ================= 付録 ================= -->
+<section class="case" id="evidence">
+<h2><span class="num">A</span>構成情報一括取得スクリプト</h2>
+<p class="lead">管理情報をパラメータファイル形式で出力し、環境設定ファイルとあわせて保存するスクリプト例です。構築完了時と変更作業の前後で取得し、diff で比較すると管理情報の差分確認に使えます。</p>
+<div class="cmd"><div class="head"><div class="title">一括取得スクリプト（例）</div><div class="tags"><span class="tag">bash</span></div></div>
+<div class="code"><pre>#!/bin/bash
+# HULFT10 構成情報一括取得スクリプト(HULFT 実行ユーザーで実行)
+export HULEXEP=/usr/local/HULFT/bin HULPATH=/usr/local/HULFT/etc
+export PATH=$HULEXEP:$PATH
+OUT=/var/tmp/hulft_evidence_$(hostname -s)_$(date +%Y%m%d_%H%M%S)
+mkdir -p &quot;$OUT&quot;
+for i in hst snd rcv job tgrp fmt mfmt; do
+  utligen -f &quot;$OUT/mng_${i}.prm&quot; -i $i -id &quot;*&quot; &gt; &quot;$OUT/mng_${i}.log&quot; 2&gt;&amp;1
+done
+cp -p &quot;$HULPATH/hulenv.conf&quot; &quot;$OUT/&quot;
+ps -ef | grep -E &quot;hulsndd|hulrcvd|hulobsd&quot; | grep -v grep &gt; &quot;$OUT/process.txt&quot;
+utllist -s &gt; &quot;$OUT/sndlog.txt&quot; 2&gt;&amp;1
+utllist -r &gt; &quot;$OUT/rcvlog.txt&quot; 2&gt;&amp;1
+tar czf &quot;$OUT.tar.gz&quot; -C &quot;$(dirname &quot;$OUT&quot;)&quot; &quot;$(basename &quot;$OUT&quot;)&quot;
+echo &quot;出力: $OUT.tar.gz&quot;</pre></div></div>
+</section>
+
+<section class="case" id="notes">
+<h2><span class="num">B</span>利用上の注意</h2>
+<div class="note"><ul style="margin:0;padding-left:20px"><li>&lt;&gt; で囲んだ値は、環境に合わせて置き換えてください。HULEXEP・HULPATH のパスは導入時の指定に合わせてください。</li><li>「注意」が付いたコマンドは、サービス停止・業務影響・データ変更を伴う可能性があります。本番環境では事前に検証環境で確認し、作業手順書に基づいて実施してください。</li><li>ポート番号(配信・集信 30000、要求受付 31000)は既定値です。hulenv.conf と詳細ホスト情報の設定を確認してください。</li><li>管理情報の参照・登録は HULFT Management Console(Web)でも行えます。複数環境への展開や差分管理には、パラメータファイル(utligen/utliupdt)の利用をおすすめします。</li><li>クラスター構成(Enterprise グレード)では、デーモンの起動・停止に hulclustersnd / hulclusterrcv / hulclusterobs(-start)を使います。</li><li>日付の指定形式は、システム動作環境設定の日付フォーマット(datefmt)に従います。</li></ul></div>
+<footer>
+  <p>掲載コマンドは一般的な仕様に基づくサンプルです。バージョンやエディションにより利用できない構文があります。本番環境で実行する前に、検証環境とセゾンテクノロジー(HULFT)の公式マニュアルで確認してください。</p>
+  <p>最終更新：2026年11月</p>
+</footer>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function hlLine(line){
+    var cm='', code=line, m=line.match(/(^|\s)#(\s|!|$).*$/);
+    if(m && !/^\s*\$/.test(line)){ var idx=line.indexOf('#', m.index); code=line.slice(0,idx); cm=line.slice(idx); }
+    var strs=[]; code=code.replace(/"[^"]*"|'[^']*'/g,function(s){strs.push(s);return '\u0000'+(strs.length-1)+'\u0000';});
+    code=esc(code).replace(/(^|[;|&]\s*|\s(?:&&|\|\|)\s)([a-zA-Z_./][\w./-]*)/g,function(a,p,c){return p+'<span class="f">'+c+'</span>';})
+                  .replace(/(\s)(--?[a-zA-Z][\w-]*)/g,'$1<span class="k">$2</span>');
+    code=code.replace(/\u0000(\d+)\u0000/g,function(_,i){return '<span class="s">'+esc(strs[+i])+'</span>';});
+    return code+(cm?'<span class="c">'+esc(cm)+'</span>':'');
+  }
+  document.querySelectorAll('.code pre').forEach(function(pre){
+    var raw=pre.textContent; pre.dataset.raw=raw;
+    pre.innerHTML=raw.split('\n').map(hlLine).join('\n');
+    var b=document.createElement('button'); b.className='copy'; b.type='button'; b.textContent='コピー';
+    b.addEventListener('click', async function(){
+      try{ await navigator.clipboard.writeText(raw); b.textContent='コピーしました'; }
+      catch(e){ var r=document.createRange(); r.selectNodeContents(pre); var s=getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent='選択しました（Ctrl+C）'; }
+      setTimeout(function(){b.textContent='コピー';},1600);
+    });
+    pre.parentElement.appendChild(b);
+  });
+  var q=document.getElementById('q'), empty=document.getElementById('empty');
+  var cards=[].slice.call(document.querySelectorAll('.cmd'));
+  q.addEventListener('input', function(){
+    var v=q.value.trim().toLowerCase(), hit=0;
+    cards.forEach(function(c){ var ok=!v || c.textContent.toLowerCase().indexOf(v)>=0;
+      c.classList.toggle('hidden',!ok); if(ok) hit++; });
+    document.querySelectorAll('h3.sub').forEach(function(h){
+      var n=h.nextElementSibling, any=false;
+      while(n && !n.matches('h3.sub')){ if(n.matches('.cmd') && !n.classList.contains('hidden')) any=true; n=n.nextElementSibling; }
+      h.classList.toggle('hidden', !!v && !any);
+    });
+    document.querySelectorAll('section.case').forEach(function(s){
+      var has=s.querySelector('.cmd:not(.hidden)') || !v;
+      s.classList.toggle('hidden', !has);
+    });
+    document.querySelectorAll('.note').forEach(function(n){n.classList.toggle('hidden',!!v);});
+    empty.style.display=(v && hit===0)?'block':'none';
+  });
+})();
+</script>
+</body>
+</html>
