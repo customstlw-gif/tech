@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tech Command Reference｜運用コマンド集</title>
-<meta name="description" content="Snowflake・PostgreSQL・Red Hat Enterprise Linux などの構築・構成確認・性能分析・障害調査で使うコマンドを、技術ごと・ケースごとに整理したリファレンス集">
+<meta name="description" content="Snowflake・PostgreSQL・Red Hat Enterprise Linux・HULFT・CLUSTERPRO・JP1/AJS3・GitLab などの構築・構成確認・性能分析・障害調査で使うコマンドを、技術ごと・ケースごとに整理したリファレンス集">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
@@ -51,7 +51,7 @@ footer a{color:var(--accent)}
   <div class="wrap">
     <div class="eyebrow">TECH COMMAND REFERENCE</div>
     <h1>運用コマンド集</h1>
-    <p>データ基盤・データベース・OS の構築、構成確認、性能分析、障害調査で使うコマンドを、技術ごと・ケースごとに整理したリファレンスです。各ページのコードはコピーしてそのまま利用できます。</p>
+    <p>データ基盤・データベース・OS・ミドルウェアの構築、構成確認、性能分析、障害調査で使うコマンドを、技術ごと・ケースごとに整理したリファレンスです。各ページのコードはコピーしてそのまま利用できます。</p>
   </div>
 </header>
 
@@ -88,15 +88,55 @@ footer a{color:var(--accent)}
       <div class="chips"><span class="chip">構築</span><span class="chip">性能</span><span class="chip">障害調査</span><span class="chip">バックアップ</span></div>
     </div>
 
-    <div class="card soon">
+    <a class="card" href="rhel/">
       <div class="top">
         <div class="logo" style="background:#cc0000">RH</div>
-        <div><h3>Red Hat Enterprise Linux</h3><div class="ver">Linux OS</div></div>
-        <span class="status">準備中</span>
+        <div><h3>Red Hat Enterprise Linux</h3><div class="ver">Linux OS(RHEL 9.8)</div></div>
+        <span class="status live">公開中</span>
       </div>
-      <p>OS 初期設定・dnf・firewalld・SELinux、sar / vmstat による性能確認、journalctl / dmesg による障害調査。</p>
-      <div class="chips"><span class="chip">構築</span><span class="chip">構成情報</span><span class="chip">性能</span><span class="chip">障害調査</span></div>
-    </div>
+      <p>OS 初期設定・dnf・firewalld・SELinux、sar / PCP による性能確認、journalctl / dmesg による障害調査、パッチ適用・バックアップ・Podman まで。</p>
+      <div class="chips"><span class="chip">構築</span><span class="chip">構成情報</span><span class="chip">性能</span><span class="chip">障害調査</span><span class="chip">パッチ</span><span class="chip">バックアップ</span></div>
+    </a>
+
+    <a class="card" href="hulft/">
+      <div class="top">
+        <div class="logo" style="background:#e60012">HU</div>
+        <div><h3>HULFT10</h3><div class="ver">ファイル転送(Linux)</div></div>
+        <span class="status live">公開中</span>
+      </div>
+      <p>デーモンの起動・停止、utliupdt / utligen による管理情報の一括登録と出力、配受信履歴の照会、再送要求による復旧。</p>
+      <div class="chips"><span class="chip">構築</span><span class="chip">構成情報</span><span class="chip">性能</span><span class="chip">障害調査</span><span class="chip">日常運用</span></div>
+    </a>
+
+    <a class="card" href="clusterpro/">
+      <div class="top">
+        <div class="logo" style="background:#1414a0">CP</div>
+        <div><h3>CLUSTERPRO X 6.0</h3><div class="ver">HAクラスター(Linux)</div></div>
+        <span class="status live">公開中</span>
+      </div>
+      <p>clpcfctrl による構成情報の適用、clpstat による状態確認、グループ操作、clplogcc によるログ採取、計画停止の手順。</p>
+      <div class="chips"><span class="chip">構築</span><span class="chip">構成情報</span><span class="chip">性能</span><span class="chip">障害調査</span><span class="chip">計画停止</span></div>
+    </a>
+
+    <a class="card" href="jp1-ajs3/">
+      <div class="top">
+        <div class="logo" style="background:#4a4a8c">J1</div>
+        <div><h3>JP1/AJS3</h3><div class="ver">ジョブ管理(Version 13 / Linux)</div></div>
+        <span class="status live">公開中</span>
+      </div>
+      <p>JP1/Base・AJS3 の起動停止、ajsprint / ajsdefine によるジョブ定義の退避と登録、実行状況の確認、再実行、資料採取。</p>
+      <div class="chips"><span class="chip">構築</span><span class="chip">構成情報</span><span class="chip">性能</span><span class="chip">障害調査</span><span class="chip">バックアップ</span></div>
+    </a>
+
+    <a class="card" href="gitlab/">
+      <div class="top">
+        <div class="logo" style="background:#fc6d26">GL</div>
+        <div><h3>GitLab</h3><div class="ver">DevOps プラットフォーム(Linuxパッケージ版)</div></div>
+        <span class="status live">公開中</span>
+      </div>
+      <p>gitlab-ctl / gitlab-rake による構築と状態確認、コンポーネント別ログの調査、バックアップ・リストア、アップグレード。</p>
+      <div class="chips"><span class="chip">構築</span><span class="chip">構成情報</span><span class="chip">性能</span><span class="chip">障害調査</span><span class="chip">バックアップ</span><span class="chip">アップグレード</span></div>
+    </a>
   </div>
 
   <h2>共通の章立て</h2>
