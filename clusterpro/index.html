@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLUSTERPRO X 6.0 運用コマンド リファレンス</title>
+<meta name="description" content="CLUSTERPRO X 6.0 for Linux の構築・構成情報取得・性能情報取得・障害調査で使うコマンドを用途別に整理したリファレンス">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f8fb; --panel:#ffffff; --ink:#1b2430; --muted:#5b6778; --line:#e2e7ee;
+  --accent:#1f6feb; --accent-soft:#e8f0fe; --code-bg:#0f1b2d; --code-ink:#dbe6f5;
+  --kw:#7cc4ff; --cm:#7f93ad; --str:#f2c38a; --fn:#b7e28f; --warn:#b54708; --warn-bg:#fff4e5;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0d131c; --panel:#141c27; --ink:#e4eaf2; --muted:#9aa7b8; --line:#243041;
+    --accent:#5aa2ff; --accent-soft:#1a2a40; --code-bg:#0a111b; --warn:#f5a25a; --warn-bg:#2a1d10; }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP",system-ui,sans-serif;line-height:1.7;font-size:15px}
+header.top{position:sticky;top:0;z-index:10;background:var(--panel);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+header.top h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.02em}
+header.top h1 span{color:var(--accent)}
+header.top a.home{color:var(--muted);text-decoration:none;font-size:13px;border:1px solid var(--line);padding:4px 10px;border-radius:6px}
+header.top a.home:hover{color:var(--accent);border-color:var(--accent)}
+.search{flex:1;min-width:220px;max-width:460px;margin-left:auto;position:relative}
+.search input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.5}
+.layout{display:grid;grid-template-columns:260px 1fr;max-width:1320px;margin:0 auto}
+nav.toc{position:sticky;top:62px;align-self:start;height:calc(100vh - 62px);overflow:auto;padding:24px 16px 40px 24px;border-right:1px solid var(--line)}
+nav.toc .grp{font-size:12px;color:var(--muted);font-weight:700;margin:18px 0 6px;letter-spacing:.05em}
+nav.toc a{display:block;color:var(--ink);text-decoration:none;padding:4px 10px;border-radius:6px;font-size:14px}
+nav.toc a:hover{background:var(--accent-soft);color:var(--accent)}
+nav.toc a .n{display:inline-block;width:24px;color:var(--muted);font-size:12px}
+main{padding:28px 36px 80px;min-width:0}
+.hero{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 26px;margin-bottom:28px}
+.hero h2{margin:0 0 6px;font-size:22px}
+.hero p{margin:6px 0;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tag{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--bg)}
+.tag.au{border-color:#9ec5ff;color:#1f5fbf}
+.tag.is{border-color:#a6e3b8;color:#1d7a3d}
+.tag.adm{border-color:#f5c08a;color:#a1520f}
+@media (prefers-color-scheme: dark){.tag.au{color:#8fc0ff}.tag.is{color:#8fdca6}.tag.adm{color:#f5b072}}
+section.case{margin-top:44px}
+section.case>h2{font-size:21px;margin:0 0 4px;padding-bottom:8px;border-bottom:2px solid var(--accent);display:flex;gap:10px;align-items:baseline}
+section.case>h2 .num{color:var(--accent);font-size:15px;font-family:"JetBrains Mono",monospace}
+section.case>p.lead{color:var(--muted);margin:8px 0 16px}
+h3.sub{font-size:16px;margin:26px 0 10px;padding-left:10px;border-left:4px solid var(--accent)}
+.cmd{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:12px 0;overflow:hidden}
+.cmd .head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:12px 16px 6px}
+.cmd .title{font-weight:700;font-size:15px}
+.cmd .desc{color:var(--muted);font-size:13.5px;padding:0 16px 10px}
+.cmd .tags{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+.code{position:relative;background:var(--code-bg)}
+.code pre{margin:0;padding:14px 16px;overflow:auto;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px;line-height:1.6;color:var(--code-ink);tab-size:2}
+.code .copy{position:absolute;top:8px;right:8px;background:#243650;color:#dbe6f5;border:0;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;opacity:.8}
+.code .copy:hover{opacity:1}
+.k{color:var(--kw)} .c{color:var(--cm);font-style:italic} .s{color:var(--str)} .f{color:var(--fn)}
+.note{background:var(--warn-bg);border-left:4px solid var(--warn);padding:10px 14px;border-radius:6px;margin:12px 0;font-size:13.5px}
+.note b{color:var(--warn)}
+table.ref{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13.5px;margin:12px 0}
+table.ref th,table.ref td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.ref th{background:var(--accent-soft);font-weight:700}
+code.i{font-family:"JetBrains Mono",monospace;font-size:12.5px;background:var(--accent-soft);padding:1px 6px;border-radius:4px}
+.hidden{display:none!important}
+.empty{display:none;padding:30px;text-align:center;color:var(--muted)}
+footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);margin-top:60px;padding-top:16px}
+@media (max-width:900px){.layout{grid-template-columns:1fr}nav.toc{display:none}main{padding:20px 16px 60px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a href="../" class="home" title="トップへ戻る">← トップ</a>
+  <h1>CLUSTERPRO X 6.0 <span>運用コマンド</span> リファレンス</h1>
+  <div class="search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="コマンド・用途で絞り込み（例:clpstat, ミラー, ログ採取）">
+  </div>
+</header>
+
+<div class="layout">
+<nav class="toc" aria-label="目次">
+  <div class="grp">基本ケース</div>
+  <a href="#build"><span class="n">01</span>構築時のコマンド</a><a href="#config"><span class="n">02</span>構築完了後の構成情報の取得</a><a href="#perf"><span class="n">03</span>性能情報の取得</a><a href="#trouble"><span class="n">04</span>障害時の調査</a>
+  <div class="grp">追加ケース</div><a href="#ops"><span class="n">05</span>計画停止・メンテナンス</a>
+  <div class="grp">付録</div>
+  <a href="#evidence"><span class="n">A</span>構成情報一括取得スクリプト</a>
+  <a href="#notes"><span class="n">B</span>利用上の注意</a>
+</nav>
+
+<main>
+<div class="hero">
+  <h2>このページについて</h2>
+  <p>CLUSTERPRO X 6.0 for Linux の構築・運用で使うコマンドを、利用シーン別に整理したリファレンスです。右上の「コピー」ボタンでクリップボードに取得できます。</p>
+  <p><code class="i">'&lt;...&gt;'</code> 部分と、例として記載したホスト名・IPアドレス・パスは環境に合わせて置き換えてください。</p>
+  <p>対象バージョン：CLUSTERPRO X 6.0 for Linux ／ 最終更新：2026年11月</p>
+  <div class="legend">
+    <span class="tag au">root</span><span style="font-size:12.5px;color:var(--muted)">… root権限（sudo）が必要</span>
+    <span class="tag is">pkg</span><span style="font-size:12.5px;color:var(--muted)">… 追加パッケージ・前提製品が必要な場合あり</span>
+    <span class="tag adm">注意</span><span style="font-size:12.5px;color:var(--muted)">… サービス影響・設定変更あり</span>
+  </div>
+</div>
+
+<div id="empty" class="empty">該当するコマンドが見つかりませんでした。</div>
+
+<!-- ================= 01 構築時のコマンド ================= -->
+<section class="case" id="build">
+<h2><span class="num">01</span>構築時のコマンド</h2>
+<p class="lead">インストール、ライセンス登録、クラスタ構成情報の適用、初回起動で使うコマンドです。構成の作成は Cluster WebUI(既定 https://&lt;サーバー&gt;:29003)で行い、コマンドは適用・確認・自動化に使います。</p>
+<h3 class="sub">1-1. インストール・事前設定</h3>
+<div class="cmd"><div class="head"><div class="title">本体をインストール(全ノードで実施)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>rpm -ivh clusterpro-&lt;バージョン&gt;.x86_64.rpm</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">CLUSTERPROが使うポートをfirewalldに一括登録(X 4.3以降)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpfwctrl.sh --add</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">全ノードの名前解決を設定(ハートビート経路含む)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>vi /etc/hosts</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ノード間の時刻同期を確認(ノード間のログ突合せのため)</div><div class="tags"></div></div>
+<div class="code"><pre>chronyc sources</pre></div></div>
+<h3 class="sub">1-2. ライセンス</h3>
+<div class="cmd"><div class="head"><div class="title">ライセンスを登録</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clplcnsc -i &lt;ライセンスファイル&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">登録済みライセンスを一覧表示</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clplcnsc -l -a</pre></div></div>
+<h3 class="sub">1-3. 構成情報の適用・バックアップ</h3>
+<div class="cmd"><div class="head"><div class="title">Cluster WebUIで作成した構成情報(clp.conf)を全ノードへ配信</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpcfctrl --push -x &lt;構成情報ディレクトリ&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">適用中の構成情報を取得</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpcfctrl --pull -x /tmp/clpconf</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">構成情報のチェック(OS設定との整合性)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpcfchk -o /tmp/cfchk -i &lt;構成情報ディレクトリ&gt;</pre></div></div>
+<h3 class="sub">1-4. 初回起動・動作確認</h3>
+<div class="cmd"><div class="head"><div class="title">全サーバーでクラスタサービスを起動</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpcl -s -a</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">クラスタ・グループ・リソースの状態を確認</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpstat</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">グループの手動移動(切替試験)</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpgrp -m &lt;グループ名&gt; -h &lt;移動先サーバー&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">クラスタ全体を再起動(起動時の自動起動試験)</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpstdn -r</pre></div></div>
+<h3 class="sub">1-5. ミラーディスク(Replicator使用時)</h3>
+<div class="cmd"><div class="head"><div class="title">ミラー状態を確認</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpmdstat --mirror &lt;md名&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ミラーディスクのクラスタパーティション初期化・ファイルシステム作成</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpmdinit --create quick &lt;md名&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ミラー復帰(初期同期)</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpmdctrl --recovery &lt;md名&gt;</pre></div></div>
+</section>
+<!-- ================= 02 構築完了後の構成情報の取得 ================= -->
+<section class="case" id="config">
+<h2><span class="num">02</span>構築完了後の構成情報の取得</h2>
+<p class="lead">完成図書(パラメータシート)の裏付けとして取得します。clp.conf は構成全体をXMLで保持しており、差分比較に使えます。</p>
+<h3 class="sub">2-1. 構成情報</h3>
+<div class="cmd"><div class="head"><div class="title">構成情報(全リソース・モニタの設定値)を詳細表示</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpstat -i --detail</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">クラスタプロパティの設定値</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpstat --cl --detail</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">グループの設定値</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpstat --grp &lt;グループ名&gt; --detail</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">グループリソースの設定値</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpstat --rsc &lt;リソース名&gt; --detail</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">モニタリソースの設定値</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpstat --mon &lt;モニタ名&gt; --detail</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">構成情報ファイル(clp.conf)一式を取得</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpcfctrl --pull -x /tmp/clpconf</pre></div></div>
+<h3 class="sub">2-2. ライセンス・バージョン・サービス</h3>
+<div class="cmd"><div class="head"><div class="title">ライセンス一覧</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clplcnsc -l -a</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">インストールバージョン</div><div class="tags"></div></div>
+<div class="code"><pre>rpm -qi clusterpro</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">CLUSTERPRO関連サービスの自動起動設定</div><div class="tags"></div></div>
+<div class="code"><pre>systemctl list-unit-files 'clusterpro*'</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">CLUSTERPROプロセスの待ち受けポート</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>ss -tulnp | grep clp</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">タイムアウト倍率の現在値</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clptoratio -s</pre></div></div>
+</section>
+<!-- ================= 03 性能情報の取得 ================= -->
+<section class="case" id="perf">
+<h2><span class="num">03</span>性能情報の取得</h2>
+<p class="lead">CLUSTERPRO自体の負荷は小さいため、主にモニタリソースの監視遅延とOSリソースを確認します。監視タイムアウトが迫っていないかが重要な観点です。</p>
+<h3 class="sub">3-1. 監視遅延・稼働状況</h3>
+<div class="cmd"><div class="head"><div class="title">モニタリソースの状態と監視間隔・タイムアウト</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpstat --mon --detail</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">モニタ遅延警告(監視処理がタイムアウトに近づいた記録)を抽出</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>grep -i "delay" /opt/nec/clusterpro/log/*.log*</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ハートビート経路ごとの状態</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpstat --hb</pre></div></div>
+<h3 class="sub">3-2. OSリソース</h3>
+<div class="cmd"><div class="head"><div class="title">CPU・メモリ・ハートビートNICの負荷</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>sar -u -r -n DEV 1 10</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">共有ディスク・ミラーディスクのI/O負荷(ディスク監視遅延の確認)</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>iostat -xz 1 10</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">CLUSTERPROプロセスのリソース使用量</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>pidstat -u -r -C clp 1 5</pre></div></div>
+</section>
+<!-- ================= 04 障害時の調査 ================= -->
+<section class="case" id="trouble">
+<h2><span class="num">04</span>障害時の調査</h2>
+<p class="lead">まず clpstat で異常箇所を特定し、アラートログ・モジュールログで原因を追います。切替が発生した場合は、両ノードのログを同じ時刻範囲で採取してください。</p>
+<h3 class="sub">4-1. 状態確認</h3>
+<div class="cmd"><div class="head"><div class="title">異常(Error / Offline / Caution)のグループ・リソース・モニタを特定</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpstat</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">自ノードの情報のみ表示(他ノードと通信できないとき)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpstat --local</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ハートビート断(ネットワーク分断)の有無</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpstat --hb</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">CLUSTERPRO関連サービスの稼働状態</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>systemctl status 'clusterpro*'</pre></div></div>
+<h3 class="sub">4-2. ログ確認・採取</h3>
+<div class="cmd"><div class="head"><div class="title">全ノードのログを一括採取(問い合わせ時に必須)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clplogcc -t type1 -o /tmp/clplog</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">自ノードのみログ採取(他ノードと通信できないとき)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clplogcc -l -o /tmp/clplog</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">モジュールログ(rc.log.cur 等)の更新状況</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>ls -lt /opt/nec/clusterpro/log/</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">グループ・リソースの起動停止ログ</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>less /opt/nec/clusterpro/log/rc.log.cur</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">モニタリソースのログ</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>less /opt/nec/clusterpro/log/rm.log.cur</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">syslogに出力されたCLUSTERPROのアラート</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>grep -i clusterpro /var/log/messages</pre></div></div>
+<h3 class="sub">4-3. 復旧操作</h3>
+<div class="cmd"><div class="head"><div class="title">グループを起動</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpgrp -s &lt;グループ名&gt; -h &lt;サーバー名&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">グループを停止</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpgrp -t &lt;グループ名&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">グループリソースを個別起動</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clprsc -s &lt;リソース名&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">グループリソースを個別停止</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clprsc -t &lt;リソース名&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">モニタの回復動作回数カウンタをリセット</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpmonctrl -c -m &lt;モニタ名&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ミラー復帰</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpmdctrl --recovery &lt;md名&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">クラスタサービスを全ノードで再起動</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpcl -r -a</pre></div></div>
+<h3 class="sub">4-4. 監視の一時停止・タイムアウト調整(調査・暫定対処)</h3>
+<div class="cmd"><div class="head"><div class="title">モニタリソースを一時停止(誤検知による切替を防止)</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpmonctrl -s -m &lt;モニタ名&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">モニタリソースを再開</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpmonctrl -r -m &lt;モニタ名&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">2時間だけタイムアウトを3倍に延長(高負荷処理時の誤検知回避)</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clptoratio -r 3 -t 2h</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">タイムアウト倍率を元に戻す</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clptoratio -i</pre></div></div>
+</section>
+<!-- ================= 05 計画停止・メンテナンス ================= -->
+<section class="case" id="ops">
+<h2><span class="num">05</span>計画停止・メンテナンス</h2>
+<p class="lead">OSパッチ適用やハードウェア保守時に使う、計画停止の手順です。</p>
+<h3 class="sub">5-1. 停止・起動</h3>
+<div class="cmd"><div class="head"><div class="title">業務グループを待機系へ移動してから保守を開始</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpgrp -m &lt;グループ名&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">指定サーバーのクラスタサービスのみ停止(片系保守)</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpcl -t -h &lt;サーバー名&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">クラスタをサスペンド(業務を止めずに構成変更を反映)</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpcl --suspend</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">クラスタをリジューム</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpcl --resume</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">自サーバーのクラスタサービスを止めて再起動</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpdown -r</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">クラスタ全体をシャットダウン</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>clpstdn</pre></div></div>
+<h3 class="sub">5-2. 運用中のメッセージ出力</h3>
+<div class="cmd"><div class="head"><div class="title">作業開始などをアラートログに記録(作業証跡)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clplogcmd -m "メンテナンス開始" --alert</pre></div></div>
+</section>
+
+<!-- ================= 付録 ================= -->
+<section class="case" id="evidence">
+<h2><span class="num">A</span>構成情報一括取得スクリプト</h2>
+<p class="lead">クラスタの構成情報と状態を取得し、ノード単位で保存するスクリプト例です。構築完了時と変更作業の前後で取得し、clp.conf を diff で比較すると構成変更の差分確認に使えます。</p>
+<div class="cmd"><div class="head"><div class="title">一括取得スクリプト（例）</div><div class="tags"><span class="tag">bash</span></div></div>
+<div class="code"><pre>#!/bin/bash
+# CLUSTERPRO X 構成情報一括取得スクリプト(root で実行)
+OUT=/var/tmp/clp_evidence_$(hostname -s)_$(date +%Y%m%d_%H%M%S)
+mkdir -p &quot;$OUT/conf&quot;
+run() { echo &quot;### $2&quot; &gt; &quot;$OUT/$1.txt&quot;; eval &quot;$2&quot; &gt;&gt; &quot;$OUT/$1.txt&quot; 2&gt;&amp;1; }
+run status    &quot;clpstat&quot;
+run config    &quot;clpstat -i --detail&quot;
+run heartbeat &quot;clpstat --hb&quot;
+run license   &quot;clplcnsc -l -a&quot;
+run toratio   &quot;clptoratio -s&quot;
+run version   &quot;rpm -qi clusterpro&quot;
+run services  &quot;systemctl list-unit-files &#x27;clusterpro*&#x27;&quot;
+clpcfctrl --pull -x &quot;$OUT/conf&quot; &gt; &quot;$OUT/cfctrl.log&quot; 2&gt;&amp;1
+tar czf &quot;$OUT.tar.gz&quot; -C &quot;$(dirname &quot;$OUT&quot;)&quot; &quot;$(basename &quot;$OUT&quot;)&quot;
+echo &quot;出力: $OUT.tar.gz&quot;</pre></div></div>
+</section>
+
+<section class="case" id="notes">
+<h2><span class="num">B</span>利用上の注意</h2>
+<div class="note"><ul style="margin:0;padding-left:20px"><li>&lt;&gt; で囲んだ値は、環境に合わせて置き換えてください。</li><li>「注意」が付いたコマンドは、サービス停止・業務影響・データ変更を伴う可能性があります。本番環境では事前に検証環境で確認し、作業手順書に基づいて実施してください。</li><li>CLUSTERPRO のコマンドは root で実行します。既定のインストール先は /opt/nec/clusterpro です。</li><li>構成の作成・変更は Cluster WebUI で行い、<code>clpcfctrl --push</code> で反映するのが基本です。変更内容によってはサスペンドやクラスタ停止が必要になるため、反映時のメッセージを確認してください。</li><li>障害の問い合わせ時は、切替が発生した時刻を含めて全ノードのログを <code>clplogcc</code> で採取してください。</li><li>ミラーディスク関連(clpmd*)のコマンドは CLUSTERPRO X Replicator を使う構成でのみ使えます。</li></ul></div>
+<footer>
+  <p>掲載コマンドは一般的な仕様に基づくサンプルです。バージョンやエディションにより利用できない構文があります。本番環境で実行する前に、検証環境とNECの公式マニュアルで確認してください。</p>
+  <p>最終更新：2026年11月</p>
+</footer>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function hlLine(line){
+    var cm='', code=line, m=line.match(/(^|\s)#(\s|!|$).*$/);
+    if(m && !/^\s*\$/.test(line)){ var idx=line.indexOf('#', m.index); code=line.slice(0,idx); cm=line.slice(idx); }
+    var strs=[]; code=code.replace(/"[^"]*"|'[^']*'/g,function(s){strs.push(s);return '\u0000'+(strs.length-1)+'\u0000';});
+    code=esc(code).replace(/(^|[;|&]\s*|\s(?:&&|\|\|)\s)([a-zA-Z_./][\w./-]*)/g,function(a,p,c){return p+'<span class="f">'+c+'</span>';})
+                  .replace(/(\s)(--?[a-zA-Z][\w-]*)/g,'$1<span class="k">$2</span>');
+    code=code.replace(/\u0000(\d+)\u0000/g,function(_,i){return '<span class="s">'+esc(strs[+i])+'</span>';});
+    return code+(cm?'<span class="c">'+esc(cm)+'</span>':'');
+  }
+  document.querySelectorAll('.code pre').forEach(function(pre){
+    var raw=pre.textContent; pre.dataset.raw=raw;
+    pre.innerHTML=raw.split('\n').map(hlLine).join('\n');
+    var b=document.createElement('button'); b.className='copy'; b.type='button'; b.textContent='コピー';
+    b.addEventListener('click', async function(){
+      try{ await navigator.clipboard.writeText(raw); b.textContent='コピーしました'; }
+      catch(e){ var r=document.createRange(); r.selectNodeContents(pre); var s=getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent='選択しました（Ctrl+C）'; }
+      setTimeout(function(){b.textContent='コピー';},1600);
+    });
+    pre.parentElement.appendChild(b);
+  });
+  var q=document.getElementById('q'), empty=document.getElementById('empty');
+  var cards=[].slice.call(document.querySelectorAll('.cmd'));
+  q.addEventListener('input', function(){
+    var v=q.value.trim().toLowerCase(), hit=0;
+    cards.forEach(function(c){ var ok=!v || c.textContent.toLowerCase().indexOf(v)>=0;
+      c.classList.toggle('hidden',!ok); if(ok) hit++; });
+    document.querySelectorAll('h3.sub').forEach(function(h){
+      var n=h.nextElementSibling, any=false;
+      while(n && !n.matches('h3.sub')){ if(n.matches('.cmd') && !n.classList.contains('hidden')) any=true; n=n.nextElementSibling; }
+      h.classList.toggle('hidden', !!v && !any);
+    });
+    document.querySelectorAll('section.case').forEach(function(s){
+      var has=s.querySelector('.cmd:not(.hidden)') || !v;
+      s.classList.toggle('hidden', !has);
+    });
+    document.querySelectorAll('.note').forEach(function(n){n.classList.toggle('hidden',!!v);});
+    empty.style.display=(v && hit===0)?'block':'none';
+  });
+})();
+</script>
+</body>
+</html>
