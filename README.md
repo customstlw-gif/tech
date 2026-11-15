@@ -9,6 +9,8 @@ Snowflake・PostgreSQL・Red Hat Enterprise Linux などの運用コマンドを
 ├── index.html          トップページ（技術一覧）
 ├── snowflake/
 │   └── index.html      Snowflake 運用コマンド
+├── aurora-postgresql/
+│   └── index.html      Aurora PostgreSQL 運用コマンド
 ├── .nojekyll           Jekyll 変換を無効化（ファイルをそのまま公開）
 └── README.md
 ```
