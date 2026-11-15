@@ -322,13 +322,17 @@ echo &quot;出力: $OUT.tar.gz&quot;</pre></div></div>
 (function(){
   function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   function hlLine(line){
-    var cm='', code=line, m=line.match(/(^|\s)#(\s|!|$).*$/);
-    if(m && !/^\s*\$/.test(line)){ var idx=line.indexOf('#', m.index); code=line.slice(0,idx); cm=line.slice(idx); }
-    var strs=[]; code=code.replace(/"[^"]*"|'[^']*'/g,function(s){strs.push(s);return '\u0000'+(strs.length-1)+'\u0000';});
-    code=esc(code).replace(/(^|[;|&]\s*|\s(?:&&|\|\|)\s)([a-zA-Z_./][\w./-]*)/g,function(a,p,c){return p+'<span class="f">'+c+'</span>';})
-                  .replace(/(\s)(--?[a-zA-Z][\w-]*)/g,'$1<span class="k">$2</span>');
-    code=code.replace(/\u0000(\d+)\u0000/g,function(_,i){return '<span class="s">'+esc(strs[+i])+'</span>';});
-    return code+(cm?'<span class="c">'+esc(cm)+'</span>':'');
+    // 生テキストをトークンに分けてからエスケープする（&lt; などの実体参照を壊さない）
+    var out='', cmdNext=true, re=/("[^"]*"|'[^']*')|(\s#.*$|^#.*$)|(&&|\|\||[;|])|(\s+)|(--?[A-Za-z][\w-]*)|([^\s;|&"']+|.)/g, m;
+    while((m=re.exec(line))){
+      if(m[1]){ out+='<span class="s">'+esc(m[1])+'</span>'; cmdNext=false; }
+      else if(m[2]){ out+='<span class="c">'+esc(m[2])+'</span>'; }
+      else if(m[3]){ out+=esc(m[3]); cmdNext=true; }
+      else if(m[4]){ out+=m[4]; }
+      else if(m[5] && !cmdNext){ out+='<span class="k">'+esc(m[5])+'</span>'; }
+      else { var w=m[6]||m[5]; out+= (cmdNext && /^[A-Za-z_.\/]/.test(w)) ? '<span class="f">'+esc(w)+'</span>' : esc(w); cmdNext=false; }
+    }
+    return out;
   }
   document.querySelectorAll('.code pre').forEach(function(pre){
     var raw=pre.textContent; pre.dataset.raw=raw;
