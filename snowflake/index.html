@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snowflake 運用コマンド リファレンス</title>
+<meta name="description" content="Snowflakeの構築・構成情報取得・性能分析・障害調査・権限監査・コスト管理・データ復旧で使うSQLコマンドをケース別に整理したリファレンス">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f8fb; --panel:#ffffff; --ink:#1b2430; --muted:#5b6778; --line:#e2e7ee;
+  --accent:#1f6feb; --accent-soft:#e8f0fe; --code-bg:#0f1b2d; --code-ink:#dbe6f5;
+  --kw:#7cc4ff; --cm:#7f93ad; --str:#f2c38a; --fn:#b7e28f; --warn:#b54708; --warn-bg:#fff4e5;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0d131c; --panel:#141c27; --ink:#e4eaf2; --muted:#9aa7b8; --line:#243041;
+    --accent:#5aa2ff; --accent-soft:#1a2a40; --code-bg:#0a111b; --warn:#f5a25a; --warn-bg:#2a1d10; }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP",system-ui,sans-serif;line-height:1.7;font-size:15px}
+header.top{position:sticky;top:0;z-index:10;background:var(--panel);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+header.top h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.02em}
+header.top h1 span{color:var(--accent)}
+header.top a.home{color:var(--muted);text-decoration:none;font-size:13px;border:1px solid var(--line);padding:4px 10px;border-radius:6px}
+header.top a.home:hover{color:var(--accent);border-color:var(--accent)}
+.search{flex:1;min-width:220px;max-width:460px;margin-left:auto;position:relative}
+.search input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.5}
+.layout{display:grid;grid-template-columns:260px 1fr;max-width:1320px;margin:0 auto}
+nav.toc{position:sticky;top:62px;align-self:start;height:calc(100vh - 62px);overflow:auto;padding:24px 16px 40px 24px;border-right:1px solid var(--line)}
+nav.toc .grp{font-size:12px;color:var(--muted);font-weight:700;margin:18px 0 6px;letter-spacing:.05em}
+nav.toc a{display:block;color:var(--ink);text-decoration:none;padding:4px 10px;border-radius:6px;font-size:14px}
+nav.toc a:hover{background:var(--accent-soft);color:var(--accent)}
+nav.toc a .n{display:inline-block;width:24px;color:var(--muted);font-size:12px}
+main{padding:28px 36px 80px;min-width:0}
+.hero{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 26px;margin-bottom:28px}
+.hero h2{margin:0 0 6px;font-size:22px}
+.hero p{margin:6px 0;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tag{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--bg)}
+.tag.au{border-color:#9ec5ff;color:#1f5fbf}
+.tag.is{border-color:#a6e3b8;color:#1d7a3d}
+.tag.adm{border-color:#f5c08a;color:#a1520f}
+@media (prefers-color-scheme: dark){.tag.au{color:#8fc0ff}.tag.is{color:#8fdca6}.tag.adm{color:#f5b072}}
+section.case{margin-top:44px}
+section.case>h2{font-size:21px;margin:0 0 4px;padding-bottom:8px;border-bottom:2px solid var(--accent);display:flex;gap:10px;align-items:baseline}
+section.case>h2 .num{color:var(--accent);font-size:15px;font-family:"JetBrains Mono",monospace}
+section.case>p.lead{color:var(--muted);margin:8px 0 16px}
+h3.sub{font-size:16px;margin:26px 0 10px;padding-left:10px;border-left:4px solid var(--accent)}
+.cmd{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:12px 0;overflow:hidden}
+.cmd .head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:12px 16px 6px}
+.cmd .title{font-weight:700;font-size:15px}
+.cmd .desc{color:var(--muted);font-size:13.5px;padding:0 16px 10px}
+.cmd .tags{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+.code{position:relative;background:var(--code-bg)}
+.code pre{margin:0;padding:14px 16px;overflow:auto;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px;line-height:1.6;color:var(--code-ink);tab-size:2}
+.code .copy{position:absolute;top:8px;right:8px;background:#243650;color:#dbe6f5;border:0;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;opacity:.8}
+.code .copy:hover{opacity:1}
+.k{color:var(--kw)} .c{color:var(--cm);font-style:italic} .s{color:var(--str)} .f{color:var(--fn)}
+.note{background:var(--warn-bg);border-left:4px solid var(--warn);padding:10px 14px;border-radius:6px;margin:12px 0;font-size:13.5px}
+.note b{color:var(--warn)}
+table.ref{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13.5px;margin:12px 0}
+table.ref th,table.ref td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.ref th{background:var(--accent-soft);font-weight:700}
+code.i{font-family:"JetBrains Mono",monospace;font-size:12.5px;background:var(--accent-soft);padding:1px 6px;border-radius:4px}
+.hidden{display:none!important}
+.empty{display:none;padding:30px;text-align:center;color:var(--muted)}
+footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);margin-top:60px;padding-top:16px}
+@media (max-width:900px){.layout{grid-template-columns:1fr}nav.toc{display:none}main{padding:20px 16px 60px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a href="../" class="home" title="トップへ戻る">← トップ</a>
+  <h1>Snowflake <span>運用コマンド</span> リファレンス</h1>
+  <div class="search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="コマンド・用途で絞り込み（例: スピル, COPY, GRANT）">
+  </div>
+</header>
+
+<div class="layout">
+<nav class="toc" aria-label="目次">
+  <div class="grp">基本ケース</div>
+  <a href="#build"><span class="n">01</span>構築時のコマンド</a>
+  <a href="#config"><span class="n">02</span>構成情報の取得</a>
+  <a href="#perf"><span class="n">03</span>性能情報の取得</a>
+  <a href="#incident"><span class="n">04</span>障害時の調査</a>
+  <div class="grp">追加ケース</div>
+  <a href="#security"><span class="n">05</span>権限・セキュリティ監査</a>
+  <a href="#cost"><span class="n">06</span>コスト・ストレージ管理</a>
+  <a href="#recovery"><span class="n">07</span>データ保護・復旧</a>
+  <a href="#monitor"><span class="n">08</span>定常運用・監視自動化</a>
+  <a href="#cli"><span class="n">09</span>Snowflake CLI</a>
+  <div class="grp">付録</div>
+  <a href="#views"><span class="n">A</span>主要ビュー早見表</a>
+</nav>
+
+<main>
+<div class="hero">
+  <h2>このページについて</h2>
+  <p>Snowflakeの設計・構築・運用で頻繁に使うSQLコマンドを、利用シーン別に整理したリファレンスです。各コードはそのまま実行できる形で記載しています。右上の「コピー」ボタンでクリップボードに取得できます。</p>
+  <p><code class="i">SAMPLE_DB</code> / <code class="i">SAMPLE_WH</code> / <code class="i">SAMPLE_ROLE</code> などの <b>SAMPLE_ で始まる名前</b>と <code class="i">'&lt;...&gt;'</code> 部分は環境に合わせて置き換えてください。</p>
+  <div class="legend">
+    <span class="tag au">ACCOUNT_USAGE</span><span style="font-size:12.5px;color:var(--muted)">… 保持1年・反映遅延あり（最大45分〜3時間程度）</span>
+    <span class="tag is">INFORMATION_SCHEMA</span><span style="font-size:12.5px;color:var(--muted)">… ほぼリアルタイム・保持7〜14日</span>
+    <span class="tag adm">要管理者権限</span>
+  </div>
+</div>
+
+<div id="empty" class="empty">該当するコマンドが見つかりませんでした。</div>
+
+<!-- ================= 01 構築 ================= -->
+<section class="case" id="build">
+<h2><span class="num">01</span>構築時のコマンド</h2>
+<p class="lead">ロール階層 → ウェアハウス → データベース/スキーマ → 権限 → ユーザーの順で作成するのが基本です。オブジェクトの所有ロールを統一（例: SYSADMIN配下のカスタムロール）しておくと、後の権限管理が簡単になります。</p>
+
+<h3 class="sub">1-1. ロール・ロール階層</h3>
+<div class="cmd"><div class="head"><div class="title">機能ロール／アクセスロールの作成と階層化</div><div class="tags"><span class="tag adm">USERADMIN / SECURITYADMIN</span></div></div>
+<div class="desc">カスタムロールは最終的に SYSADMIN の配下に付けるのが推奨です（孤立ロールを作らない）。</div>
+<div class="code"><pre>USE ROLE USERADMIN;
+CREATE ROLE IF NOT EXISTS SAMPLE_DEVELOPER COMMENT = '開発者用 機能ロール';
+CREATE ROLE IF NOT EXISTS SAMPLE_DB_RW     COMMENT = 'SAMPLE_DB 読み書き アクセスロール';
+CREATE ROLE IF NOT EXISTS SAMPLE_DB_RO     COMMENT = 'SAMPLE_DB 参照専用 アクセスロール';
+
+USE ROLE SECURITYADMIN;
+GRANT ROLE SAMPLE_DB_RO     TO ROLE SAMPLE_DB_RW;     -- RW は RO を包含
+GRANT ROLE SAMPLE_DB_RW     TO ROLE SAMPLE_DEVELOPER;
+GRANT ROLE SAMPLE_DEVELOPER TO ROLE SYSADMIN;         -- 階層の頂点を SYSADMIN へ</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">データベースロールの作成</div><div class="tags"><span class="tag">DB単位の権限管理</span></div></div>
+<div class="desc">DB内に閉じたロール。DBのクローンやデータ共有と一緒に権限を持ち運べます。</div>
+<div class="code"><pre>USE ROLE SYSADMIN;
+CREATE DATABASE ROLE IF NOT EXISTS SAMPLE_DB.DR_READ;
+GRANT USAGE  ON SCHEMA SAMPLE_DB.SAMPLE_SCHEMA TO DATABASE ROLE SAMPLE_DB.DR_READ;
+GRANT SELECT ON ALL TABLES IN SCHEMA SAMPLE_DB.SAMPLE_SCHEMA TO DATABASE ROLE SAMPLE_DB.DR_READ;
+GRANT DATABASE ROLE SAMPLE_DB.DR_READ TO ROLE SAMPLE_DB_RO;</pre></div></div>
+
+<h3 class="sub">1-2. ウェアハウス</h3>
+<div class="cmd"><div class="head"><div class="title">ウェアハウスの作成（標準設定）</div><div class="tags"><span class="tag">SYSADMIN</span></div></div>
+<div class="desc">自動停止は60秒前後、初期状態は停止で作成するとコストのムダを防げます。用途（ETL / BI / 開発）ごとに分けるのが基本です。</div>
+<div class="code"><pre>USE ROLE SYSADMIN;
+CREATE WAREHOUSE IF NOT EXISTS SAMPLE_WH
+  WAREHOUSE_SIZE      = 'XSMALL'
+  AUTO_SUSPEND        = 60          -- 秒
+  AUTO_RESUME         = TRUE
+  INITIALLY_SUSPENDED = TRUE
+  STATEMENT_TIMEOUT_IN_SECONDS        = 3600  -- 暴走クエリ対策
+  STATEMENT_QUEUED_TIMEOUT_IN_SECONDS = 600
+  COMMENT = 'BI参照用';
+
+GRANT USAGE, OPERATE ON WAREHOUSE SAMPLE_WH TO ROLE SAMPLE_DEVELOPER;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">マルチクラスタ ウェアハウス（同時実行対策）</div><div class="tags"><span class="tag">Enterprise 以上</span></div></div>
+<div class="code"><pre>CREATE WAREHOUSE IF NOT EXISTS SAMPLE_BI_WH
+  WAREHOUSE_SIZE    = 'SMALL'
+  MIN_CLUSTER_COUNT = 1
+  MAX_CLUSTER_COUNT = 3
+  SCALING_POLICY    = 'STANDARD'   -- コスト優先なら 'ECONOMY'
+  AUTO_SUSPEND = 60  AUTO_RESUME = TRUE  INITIALLY_SUSPENDED = TRUE;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">リソースモニター（クレジット上限）</div><div class="tags"><span class="tag adm">ACCOUNTADMIN</span></div></div>
+<div class="code"><pre>USE ROLE ACCOUNTADMIN;
+CREATE OR REPLACE RESOURCE MONITOR SAMPLE_RM
+  WITH CREDIT_QUOTA = 100
+       FREQUENCY = MONTHLY
+       START_TIMESTAMP = IMMEDIATELY
+  TRIGGERS ON 80  PERCENT DO NOTIFY
+           ON 100 PERCENT DO SUSPEND
+           ON 110 PERCENT DO SUSPEND_IMMEDIATE;
+
+ALTER WAREHOUSE SAMPLE_WH SET RESOURCE_MONITOR = SAMPLE_RM;</pre></div></div>
+
+<h3 class="sub">1-3. データベース・スキーマ・テーブル</h3>
+<div class="cmd"><div class="head"><div class="title">データベース／スキーマの作成</div><div class="tags"><span class="tag">SYSADMIN</span></div></div>
+<div class="desc">管理アクセススキーマ（WITH MANAGED ACCESS）にすると、権限付与をスキーマ所有者に集約でき、オブジェクト所有者による勝手なGRANTを防げます。</div>
+<div class="code"><pre>USE ROLE SYSADMIN;
+CREATE DATABASE IF NOT EXISTS SAMPLE_DB
+  DATA_RETENTION_TIME_IN_DAYS = 1      -- Time Travel 日数（Enterprise は最大90）
+  COMMENT = 'サンプルDB';
+
+CREATE SCHEMA IF NOT EXISTS SAMPLE_DB.SAMPLE_SCHEMA
+  WITH MANAGED ACCESS
+  COMMENT = '業務データ';
+
+-- 一時データ用（Fail-safe なし → ストレージ費用削減）
+CREATE TRANSIENT SCHEMA IF NOT EXISTS SAMPLE_DB.WORK;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">テーブルの作成（クラスタリングキー・コメント付き）</div><div class="tags"><span class="tag">DDL</span></div></div>
+<div class="code"><pre>CREATE TABLE IF NOT EXISTS SAMPLE_DB.SAMPLE_SCHEMA.ORDERS (
+  ORDER_ID     NUMBER(38,0)  NOT NULL COMMENT '注文ID',
+  CUSTOMER_ID  NUMBER(38,0)           COMMENT '顧客ID',
+  ORDER_DATE   DATE                   COMMENT '注文日',
+  AMOUNT       NUMBER(18,2)           COMMENT '金額',
+  CREATED_AT   TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  CONSTRAINT PK_ORDERS PRIMARY KEY (ORDER_ID)   -- 情報制約（強制はされない）
+)
+CLUSTER BY (ORDER_DATE)   -- 数TB規模以上で検討
+COMMENT = '注文テーブル';</pre></div></div>
+
+<h3 class="sub">1-4. 権限付与（将来付与を含む）</h3>
+<div class="cmd"><div class="head"><div class="title">アクセスロールへの権限付与テンプレート</div><div class="tags"><span class="tag adm">SECURITYADMIN</span></div></div>
+<div class="desc">FUTURE GRANTS を併用すると、今後作成されるテーブル・ビューにも自動で権限が付きます。</div>
+<div class="code"><pre>USE ROLE SECURITYADMIN;
+-- 参照専用（RO）
+GRANT USAGE  ON DATABASE SAMPLE_DB                       TO ROLE SAMPLE_DB_RO;
+GRANT USAGE  ON ALL SCHEMAS    IN DATABASE SAMPLE_DB     TO ROLE SAMPLE_DB_RO;
+GRANT USAGE  ON FUTURE SCHEMAS IN DATABASE SAMPLE_DB     TO ROLE SAMPLE_DB_RO;
+GRANT SELECT ON ALL TABLES     IN DATABASE SAMPLE_DB     TO ROLE SAMPLE_DB_RO;
+GRANT SELECT ON FUTURE TABLES  IN DATABASE SAMPLE_DB     TO ROLE SAMPLE_DB_RO;
+GRANT SELECT ON ALL VIEWS      IN DATABASE SAMPLE_DB     TO ROLE SAMPLE_DB_RO;
+GRANT SELECT ON FUTURE VIEWS   IN DATABASE SAMPLE_DB     TO ROLE SAMPLE_DB_RO;
+
+-- 読み書き（RW）
+GRANT INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES    IN DATABASE SAMPLE_DB TO ROLE SAMPLE_DB_RW;
+GRANT INSERT, UPDATE, DELETE, TRUNCATE ON FUTURE TABLES IN DATABASE SAMPLE_DB TO ROLE SAMPLE_DB_RW;
+GRANT CREATE TABLE, CREATE VIEW ON SCHEMA SAMPLE_DB.SAMPLE_SCHEMA TO ROLE SAMPLE_DB_RW;</pre></div></div>
+<div class="note"><b>注意：</b>スキーマ単位とデータベース単位の FUTURE GRANTS が両方ある場合、<b>スキーマ単位が優先</b>され、データベース単位は適用されません。どちらかに統一してください。</div>
+
+<h3 class="sub">1-5. ユーザー</h3>
+<div class="cmd"><div class="head"><div class="title">人ユーザー／サービスユーザーの作成</div><div class="tags"><span class="tag adm">USERADMIN</span></div></div>
+<div class="desc">バッチやツール接続用は TYPE = SERVICE（パスワード不可）＋キーペア認証にします。</div>
+<div class="code"><pre>USE ROLE USERADMIN;
+-- 人ユーザー（SSO 利用時はパスワード不要）
+CREATE USER IF NOT EXISTS TARO_YAMADA
+  LOGIN_NAME = 'taro.yamada@example.com'
+  EMAIL = 'taro.yamada@example.com'
+  DEFAULT_ROLE = SAMPLE_DEVELOPER
+  DEFAULT_WAREHOUSE = SAMPLE_WH
+  TYPE = PERSON;
+
+-- サービスユーザー（キーペア認証）
+CREATE USER IF NOT EXISTS SVC_ETL
+  TYPE = SERVICE
+  RSA_PUBLIC_KEY = '&lt;公開鍵（ヘッダ/フッタ除く）&gt;'
+  DEFAULT_ROLE = SAMPLE_DB_RW
+  DEFAULT_WAREHOUSE = SAMPLE_WH;
+
+USE ROLE SECURITYADMIN;
+GRANT ROLE SAMPLE_DEVELOPER TO USER TARO_YAMADA;
+GRANT ROLE SAMPLE_DB_RW     TO USER SVC_ETL;</pre></div></div>
+
+<h3 class="sub">1-6. セキュリティ設定</h3>
+<div class="cmd"><div class="head"><div class="title">ネットワークポリシー（IP制限）</div><div class="tags"><span class="tag adm">SECURITYADMIN</span></div></div>
+<div class="code"><pre>USE ROLE SECURITYADMIN;
+CREATE NETWORK POLICY IF NOT EXISTS SAMPLE_NP
+  ALLOWED_IP_LIST = ('203.0.113.0/24', '198.51.100.10')
+  COMMENT = '社内NW・バッチサーバのみ許可';
+
+-- ユーザー単位で適用（まず一部ユーザーで検証してからアカウントに適用）
+ALTER USER SVC_ETL SET NETWORK_POLICY = SAMPLE_NP;
+-- ALTER ACCOUNT SET NETWORK_POLICY = SAMPLE_NP;   -- 自分の接続元IPを含めること！</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">パスワードポリシー／セッションポリシー</div><div class="tags"><span class="tag adm">ACCOUNTADMIN 等</span></div></div>
+<div class="code"><pre>CREATE PASSWORD POLICY IF NOT EXISTS SAMPLE_DB.SECURITY.PWD_POLICY
+  PASSWORD_MIN_LENGTH = 14
+  PASSWORD_MAX_RETRIES = 5
+  PASSWORD_LOCKOUT_TIME_MINS = 30;
+ALTER ACCOUNT SET PASSWORD POLICY SAMPLE_DB.SECURITY.PWD_POLICY;
+
+CREATE SESSION POLICY IF NOT EXISTS SAMPLE_DB.SECURITY.SESSION_POLICY
+  SESSION_IDLE_TIMEOUT_MINS = 60
+  SESSION_UI_IDLE_TIMEOUT_MINS = 30;
+ALTER ACCOUNT SET SESSION POLICY SAMPLE_DB.SECURITY.SESSION_POLICY;</pre></div></div>
+
+<h3 class="sub">1-7. データロード基盤（外部連携）</h3>
+<div class="cmd"><div class="head"><div class="title">ストレージ統合（S3の例）＋外部ステージ</div><div class="tags"><span class="tag adm">ACCOUNTADMIN</span></div></div>
+<div class="desc">作成後に <code class="i">DESC INTEGRATION</code> で表示される IAMユーザーARN と External ID を AWS 側の信頼ポリシーへ設定します。</div>
+<div class="code"><pre>USE ROLE ACCOUNTADMIN;
+CREATE STORAGE INTEGRATION IF NOT EXISTS SAMPLE_S3_INT
+  TYPE = EXTERNAL_STAGE
+  STORAGE_PROVIDER = 'S3'
+  ENABLED = TRUE
+  STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::123456789012:role/snowflake-access'
+  STORAGE_ALLOWED_LOCATIONS = ('s3://sample-bucket/landing/');
+
+DESC INTEGRATION SAMPLE_S3_INT;   -- STORAGE_AWS_IAM_USER_ARN / STORAGE_AWS_EXTERNAL_ID を確認
+GRANT USAGE ON INTEGRATION SAMPLE_S3_INT TO ROLE SYSADMIN;
+
+USE ROLE SYSADMIN;
+CREATE FILE FORMAT IF NOT EXISTS SAMPLE_DB.SAMPLE_SCHEMA.FF_CSV
+  TYPE = CSV  SKIP_HEADER = 1  FIELD_OPTIONALLY_ENCLOSED_BY = '"'
+  NULL_IF = ('', 'NULL')  ENCODING = 'UTF8';
+
+CREATE STAGE IF NOT EXISTS SAMPLE_DB.SAMPLE_SCHEMA.STG_LANDING
+  URL = 's3://sample-bucket/landing/'
+  STORAGE_INTEGRATION = SAMPLE_S3_INT
+  FILE_FORMAT = SAMPLE_DB.SAMPLE_SCHEMA.FF_CSV;
+
+LIST @SAMPLE_DB.SAMPLE_SCHEMA.STG_LANDING;   -- 疎通確認</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">COPY / Snowpipe / ストリーム / タスク</div><div class="tags"><span class="tag">ELT パイプライン</span></div></div>
+<div class="code"><pre>-- 一括ロード
+COPY INTO SAMPLE_DB.SAMPLE_SCHEMA.ORDERS
+  FROM @SAMPLE_DB.SAMPLE_SCHEMA.STG_LANDING/orders/
+  ON_ERROR = 'ABORT_STATEMENT';
+
+-- 継続ロード（Snowpipe 自動取り込み）
+CREATE PIPE IF NOT EXISTS SAMPLE_DB.SAMPLE_SCHEMA.PIPE_ORDERS
+  AUTO_INGEST = TRUE
+AS
+  COPY INTO SAMPLE_DB.SAMPLE_SCHEMA.ORDERS
+  FROM @SAMPLE_DB.SAMPLE_SCHEMA.STG_LANDING/orders/;
+
+-- 変更データ取得
+CREATE STREAM IF NOT EXISTS SAMPLE_DB.SAMPLE_SCHEMA.ORDERS_STREAM
+  ON TABLE SAMPLE_DB.SAMPLE_SCHEMA.ORDERS;
+
+-- 定期実行タスク（ストリームにデータがある時のみ実行）
+CREATE TASK IF NOT EXISTS SAMPLE_DB.SAMPLE_SCHEMA.TASK_MERGE_ORDERS
+  WAREHOUSE = SAMPLE_WH
+  SCHEDULE  = 'USING CRON 0 * * * * Asia/Tokyo'
+  WHEN SYSTEM$STREAM_HAS_DATA('SAMPLE_DB.SAMPLE_SCHEMA.ORDERS_STREAM')
+AS
+  INSERT INTO SAMPLE_DB.SAMPLE_SCHEMA.ORDERS_HIST
+  SELECT * EXCLUDE (METADATA$ACTION, METADATA$ISUPDATE, METADATA$ROW_ID)
+  FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS_STREAM;
+
+ALTER TASK SAMPLE_DB.SAMPLE_SCHEMA.TASK_MERGE_ORDERS RESUME;   -- 作成直後は SUSPENDED</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ダイナミックテーブル</div><div class="tags"><span class="tag">宣言的パイプライン</span></div></div>
+<div class="code"><pre>CREATE OR REPLACE DYNAMIC TABLE SAMPLE_DB.SAMPLE_SCHEMA.DT_DAILY_SALES
+  TARGET_LAG = '1 hour'
+  WAREHOUSE  = SAMPLE_WH
+AS
+  SELECT ORDER_DATE, SUM(AMOUNT) AS TOTAL_AMOUNT
+  FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS
+  GROUP BY ORDER_DATE;</pre></div></div>
+</section>
+
+<!-- ================= 02 構成情報 ================= -->
+<section class="case" id="config">
+<h2><span class="num">02</span>構築完了後の構成情報の取得</h2>
+<p class="lead">設計書との突合、構成管理台帳の作成、環境間の差分確認に使います。SHOW 系は RESULT_SCAN と組み合わせると SQL で加工できます。</p>
+
+<h3 class="sub">2-1. オブジェクト一覧（SHOW / DESCRIBE）</h3>
+<div class="cmd"><div class="head"><div class="title">主要オブジェクトの一覧</div><div class="tags"><span class="tag">SHOW</span></div></div>
+<div class="code"><pre>SHOW WAREHOUSES;
+SHOW DATABASES;
+SHOW SCHEMAS            IN DATABASE SAMPLE_DB;
+SHOW TABLES             IN SCHEMA   SAMPLE_DB.SAMPLE_SCHEMA;
+SHOW VIEWS              IN DATABASE SAMPLE_DB;
+SHOW DYNAMIC TABLES     IN ACCOUNT;
+SHOW STAGES             IN ACCOUNT;
+SHOW FILE FORMATS       IN ACCOUNT;
+SHOW PIPES              IN ACCOUNT;
+SHOW STREAMS            IN ACCOUNT;
+SHOW TASKS              IN ACCOUNT;
+SHOW INTEGRATIONS;
+SHOW NETWORK POLICIES;
+SHOW RESOURCE MONITORS;
+SHOW ROLES;
+SHOW USERS;
+SHOW SHARES;
+SHOW USER FUNCTIONS     IN ACCOUNT;
+SHOW PROCEDURES         IN ACCOUNT;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">SHOW 結果を SQL で絞り込む</div><div class="tags"><span class="tag">RESULT_SCAN</span></div></div>
+<div class="desc">SHOW の列名は小文字のため、ダブルクォートで囲みます。</div>
+<div class="code"><pre>SHOW WAREHOUSES;
+SELECT "name", "size", "state", "auto_suspend", "auto_resume",
+       "min_cluster_count", "max_cluster_count", "resource_monitor", "owner"
+FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))
+ORDER BY "name";</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">詳細定義の確認（DESCRIBE）</div><div class="tags"><span class="tag">DESC</span></div></div>
+<div class="code"><pre>DESC WAREHOUSE   SAMPLE_WH;
+DESC TABLE       SAMPLE_DB.SAMPLE_SCHEMA.ORDERS;
+DESC STAGE       SAMPLE_DB.SAMPLE_SCHEMA.STG_LANDING;
+DESC PIPE        SAMPLE_DB.SAMPLE_SCHEMA.PIPE_ORDERS;    -- notification_channel（SQS ARN）を確認
+DESC INTEGRATION SAMPLE_S3_INT;
+DESC USER        SVC_ETL;
+DESC NETWORK POLICY SAMPLE_NP;</pre></div></div>
+
+<h3 class="sub">2-2. DDL の取得（構成のエクスポート）</h3>
+<div class="cmd"><div class="head"><div class="title">GET_DDL でオブジェクト定義を出力</div><div class="tags"><span class="tag">構成管理 / 差分比較</span></div></div>
+<div class="desc">第3引数 TRUE で完全修飾名付きの DDL を出力します。DB 単位で取得すると配下のスキーマ・テーブル・ビューをまとめて出力できます。</div>
+<div class="code"><pre>SELECT GET_DDL('DATABASE', 'SAMPLE_DB', TRUE);
+SELECT GET_DDL('SCHEMA',   'SAMPLE_DB.SAMPLE_SCHEMA', TRUE);
+SELECT GET_DDL('TABLE',    'SAMPLE_DB.SAMPLE_SCHEMA.ORDERS', TRUE);
+SELECT GET_DDL('VIEW',     'SAMPLE_DB.SAMPLE_SCHEMA.V_ORDERS', TRUE);
+SELECT GET_DDL('PIPE',     'SAMPLE_DB.SAMPLE_SCHEMA.PIPE_ORDERS', TRUE);
+SELECT GET_DDL('TASK',     'SAMPLE_DB.SAMPLE_SCHEMA.TASK_MERGE_ORDERS', TRUE);
+SELECT GET_DDL('PROCEDURE','SAMPLE_DB.SAMPLE_SCHEMA.SP_SAMPLE(VARCHAR)', TRUE);</pre></div></div>
+
+<h3 class="sub">2-3. テーブル・カラム定義書の作成</h3>
+<div class="cmd"><div class="head"><div class="title">テーブル一覧（行数・サイズ・コメント付き）</div><div class="tags"><span class="tag is">INFORMATION_SCHEMA</span></div></div>
+<div class="code"><pre>SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE, IS_TRANSIENT,
+       ROW_COUNT, ROUND(BYTES/1024/1024, 2) AS SIZE_MB,
+       CLUSTERING_KEY, RETENTION_TIME, COMMENT, CREATED, LAST_ALTERED
+FROM SAMPLE_DB.INFORMATION_SCHEMA.TABLES
+WHERE TABLE_SCHEMA &lt;&gt; 'INFORMATION_SCHEMA'
+ORDER BY TABLE_SCHEMA, TABLE_NAME;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">カラム定義一覧</div><div class="tags"><span class="tag is">INFORMATION_SCHEMA</span></div></div>
+<div class="code"><pre>SELECT TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION, COLUMN_NAME,
+       DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE,
+       IS_NULLABLE, COLUMN_DEFAULT, COMMENT
+FROM SAMPLE_DB.INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = 'SAMPLE_SCHEMA'
+ORDER BY TABLE_NAME, ORDINAL_POSITION;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">アカウント全体のオブジェクト棚卸し</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>SELECT TABLE_CATALOG AS DB, TABLE_SCHEMA, TABLE_TYPE, COUNT(*) AS CNT,
+       ROUND(SUM(BYTES)/POWER(1024,3), 2) AS SIZE_GB
+FROM SNOWFLAKE.ACCOUNT_USAGE.TABLES
+WHERE DELETED IS NULL
+GROUP BY 1,2,3
+ORDER BY 1,2,3;</pre></div></div>
+
+<h3 class="sub">2-4. 権限構成の取得</h3>
+<div class="cmd"><div class="head"><div class="title">ロール・ユーザー・オブジェクトの権限確認</div><div class="tags"><span class="tag">SHOW GRANTS</span></div></div>
+<div class="code"><pre>SHOW GRANTS TO ROLE   SAMPLE_DB_RO;          -- ロールが持つ権限
+SHOW GRANTS OF ROLE   SAMPLE_DB_RO;          -- ロールを付与されたユーザー/ロール
+SHOW GRANTS TO USER   TARO_YAMADA;           -- ユーザーに付与されたロール
+SHOW GRANTS ON TABLE  SAMPLE_DB.SAMPLE_SCHEMA.ORDERS;   -- オブジェクトへの権限
+SHOW FUTURE GRANTS IN DATABASE SAMPLE_DB;
+SHOW FUTURE GRANTS IN SCHEMA   SAMPLE_DB.SAMPLE_SCHEMA;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ロール階層（親子関係）の一覧</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>SELECT NAME AS CHILD_ROLE, GRANTEE_NAME AS PARENT_ROLE, CREATED_ON
+FROM SNOWFLAKE.ACCOUNT_USAGE.GRANTS_TO_ROLES
+WHERE GRANTED_ON = 'ROLE'
+  AND PRIVILEGE  = 'USAGE'
+  AND DELETED_ON IS NULL
+ORDER BY PARENT_ROLE, CHILD_ROLE;</pre></div></div>
+
+<h3 class="sub">2-5. パラメータ・アカウント情報</h3>
+<div class="cmd"><div class="head"><div class="title">パラメータ設定値の確認</div><div class="tags"><span class="tag">SHOW PARAMETERS</span></div></div>
+<div class="code"><pre>SHOW PARAMETERS IN ACCOUNT;
+SHOW PARAMETERS LIKE '%TIMEOUT%' IN ACCOUNT;
+SHOW PARAMETERS IN WAREHOUSE SAMPLE_WH;
+SHOW PARAMETERS IN DATABASE  SAMPLE_DB;
+SHOW PARAMETERS IN USER      SVC_ETL;
+SHOW PARAMETERS IN SESSION;
+
+-- デフォルトから変更されている値のみ
+SHOW PARAMETERS IN ACCOUNT;
+SELECT "key", "value", "default", "level"
+FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))
+WHERE "value" &lt;&gt; "default";</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">接続中のアカウント・リージョン・バージョン</div><div class="tags"><span class="tag">コンテキスト関数</span></div></div>
+<div class="code"><pre>SELECT CURRENT_ORGANIZATION_NAME(), CURRENT_ACCOUNT_NAME(), CURRENT_ACCOUNT(),
+       CURRENT_REGION(), CURRENT_VERSION(),
+       CURRENT_USER(), CURRENT_ROLE(), CURRENT_WAREHOUSE(),
+       CURRENT_DATABASE(), CURRENT_SCHEMA();</pre></div></div>
+</section>
+
+<!-- ================= 03 性能 ================= -->
+<section class="case" id="perf">
+<h2><span class="num">03</span>性能情報の取得</h2>
+<p class="lead">遅いクエリの特定 → ボトルネック（キュー待ち・スピル・プルーニング不足）の切り分け → ウェアハウスの負荷確認、の順で調べます。</p>
+
+<h3 class="sub">3-1. クエリ実行状況</h3>
+<div class="cmd"><div class="head"><div class="title">実行時間の長いクエリ TOP 20（過去7日）</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>SELECT QUERY_ID, USER_NAME, ROLE_NAME, WAREHOUSE_NAME, WAREHOUSE_SIZE,
+       TOTAL_ELAPSED_TIME/1000      AS ELAPSED_SEC,
+       COMPILATION_TIME/1000        AS COMPILE_SEC,
+       EXECUTION_TIME/1000          AS EXEC_SEC,
+       QUEUED_OVERLOAD_TIME/1000    AS QUEUED_SEC,
+       BYTES_SCANNED/POWER(1024,3)  AS SCANNED_GB,
+       LEFT(QUERY_TEXT, 200)        AS QUERY_TEXT
+FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+WHERE START_TIME &gt;= DATEADD(DAY, -7, CURRENT_TIMESTAMP())
+  AND EXECUTION_STATUS = 'SUCCESS'
+ORDER BY TOTAL_ELAPSED_TIME DESC
+LIMIT 20;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">直近・実行中のクエリ（リアルタイム）</div><div class="tags"><span class="tag is">INFORMATION_SCHEMA</span></div></div>
+<div class="code"><pre>SELECT QUERY_ID, USER_NAME, WAREHOUSE_NAME, EXECUTION_STATUS,
+       START_TIME, TOTAL_ELAPSED_TIME/1000 AS ELAPSED_SEC,
+       LEFT(QUERY_TEXT, 200) AS QUERY_TEXT
+FROM TABLE(INFORMATION_SCHEMA.QUERY_HISTORY(
+       END_TIME_RANGE_START =&gt; DATEADD(HOUR, -1, CURRENT_TIMESTAMP()),
+       RESULT_LIMIT =&gt; 1000))
+WHERE EXECUTION_STATUS IN ('RUNNING', 'QUEUED', 'BLOCKED')
+ORDER BY START_TIME;
+
+-- 特定ウェアハウス / ユーザーに絞る場合
+-- TABLE(INFORMATION_SCHEMA.QUERY_HISTORY_BY_WAREHOUSE(WAREHOUSE_NAME =&gt; 'SAMPLE_WH'))
+-- TABLE(INFORMATION_SCHEMA.QUERY_HISTORY_BY_USER(USER_NAME =&gt; 'SVC_ETL'))</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">同じ処理の傾向を見る（パラメータ化ハッシュで集計）</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="desc">リテラル値違いの同型クエリをまとめて、合計負荷の大きい処理を特定します。</div>
+<div class="code"><pre>SELECT QUERY_PARAMETERIZED_HASH,
+       COUNT(*)                               AS EXEC_COUNT,
+       ROUND(SUM(TOTAL_ELAPSED_TIME)/1000/60) AS TOTAL_MIN,
+       ROUND(AVG(TOTAL_ELAPSED_TIME)/1000, 1) AS AVG_SEC,
+       ANY_VALUE(LEFT(QUERY_TEXT, 200))       AS SAMPLE_QUERY
+FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+WHERE START_TIME &gt;= DATEADD(DAY, -7, CURRENT_TIMESTAMP())
+GROUP BY 1
+ORDER BY TOTAL_MIN DESC
+LIMIT 20;</pre></div></div>
+
+<h3 class="sub">3-2. ボトルネックの切り分け</h3>
+<div class="cmd"><div class="head"><div class="title">ディスクスピルが発生したクエリ（メモリ不足）</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="desc">リモートスピルが多い場合は、ウェアハウスのサイズアップかクエリ改善（結合・集計の見直し）を検討します。</div>
+<div class="code"><pre>SELECT QUERY_ID, WAREHOUSE_NAME, WAREHOUSE_SIZE,
+       ROUND(BYTES_SPILLED_TO_LOCAL_STORAGE /POWER(1024,3), 2) AS LOCAL_SPILL_GB,
+       ROUND(BYTES_SPILLED_TO_REMOTE_STORAGE/POWER(1024,3), 2) AS REMOTE_SPILL_GB,
+       TOTAL_ELAPSED_TIME/1000 AS ELAPSED_SEC,
+       LEFT(QUERY_TEXT, 200) AS QUERY_TEXT
+FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+WHERE START_TIME &gt;= DATEADD(DAY, -7, CURRENT_TIMESTAMP())
+  AND (BYTES_SPILLED_TO_LOCAL_STORAGE &gt; 0 OR BYTES_SPILLED_TO_REMOTE_STORAGE &gt; 0)
+ORDER BY BYTES_SPILLED_TO_REMOTE_STORAGE DESC, BYTES_SPILLED_TO_LOCAL_STORAGE DESC
+LIMIT 20;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">プルーニング効率の悪いクエリ（全件スキャンに近い）</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>SELECT QUERY_ID, WAREHOUSE_NAME, PARTITIONS_SCANNED, PARTITIONS_TOTAL,
+       ROUND(PARTITIONS_SCANNED / NULLIF(PARTITIONS_TOTAL,0) * 100, 1) AS SCAN_RATIO_PCT,
+       TOTAL_ELAPSED_TIME/1000 AS ELAPSED_SEC,
+       LEFT(QUERY_TEXT, 200) AS QUERY_TEXT
+FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+WHERE START_TIME &gt;= DATEADD(DAY, -7, CURRENT_TIMESTAMP())
+  AND PARTITIONS_TOTAL &gt; 1000
+  AND PARTITIONS_SCANNED / NULLIF(PARTITIONS_TOTAL,0) &gt; 0.8
+ORDER BY TOTAL_ELAPSED_TIME DESC
+LIMIT 20;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">キュー待ちが多いウェアハウス（同時実行不足）</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="desc">QUEUED_OVERLOAD が多い → マルチクラスタ化／ウェアハウス分離。QUEUED_PROVISIONING が多い → 起動待ち（AUTO_SUSPEND が短すぎる可能性）。</div>
+<div class="code"><pre>SELECT WAREHOUSE_NAME,
+       COUNT(*) AS QUERY_COUNT,
+       COUNT_IF(QUEUED_OVERLOAD_TIME &gt; 0)         AS QUEUED_QUERIES,
+       ROUND(SUM(QUEUED_OVERLOAD_TIME)/1000/60, 1)  AS QUEUED_OVERLOAD_MIN,
+       ROUND(SUM(QUEUED_PROVISIONING_TIME)/1000/60,1) AS QUEUED_PROVISION_MIN
+FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+WHERE START_TIME &gt;= DATEADD(DAY, -7, CURRENT_TIMESTAMP())
+  AND WAREHOUSE_NAME IS NOT NULL
+GROUP BY 1
+ORDER BY QUEUED_OVERLOAD_MIN DESC;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">クエリプロファイルの数値取得（オペレーター別）</div><div class="tags"><span class="tag">GET_QUERY_OPERATOR_STATS</span></div></div>
+<div class="desc">Snowsight のクエリプロファイルと同じ情報を SQL で取得します（実行後14日以内のクエリ）。</div>
+<div class="code"><pre>SELECT OPERATOR_ID, OPERATOR_TYPE, PARENT_OPERATORS,
+       OPERATOR_STATISTICS:output_rows::NUMBER             AS OUTPUT_ROWS,
+       EXECUTION_TIME_BREAKDOWN:overall_percentage::FLOAT  AS TIME_PCT,
+       OPERATOR_STATISTICS:spilling                        AS SPILLING,
+       OPERATOR_STATISTICS:pruning                         AS PRUNING
+FROM TABLE(GET_QUERY_OPERATOR_STATS('&lt;QUERY_ID&gt;'))
+ORDER BY TIME_PCT DESC NULLS LAST;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">クエリアクセラレーション（QAS）の効果見込み</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>SELECT WAREHOUSE_NAME,
+       COUNT(*) AS ELIGIBLE_QUERIES,
+       ROUND(SUM(ELIGIBLE_QUERY_ACCELERATION_TIME)/60, 1) AS ELIGIBLE_MIN,
+       MAX(UPPER_LIMIT_SCALE_FACTOR) AS MAX_SCALE_FACTOR
+FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_ACCELERATION_ELIGIBLE
+WHERE START_TIME &gt;= DATEADD(DAY, -7, CURRENT_TIMESTAMP())
+GROUP BY 1
+ORDER BY ELIGIBLE_MIN DESC;</pre></div></div>
+
+<h3 class="sub">3-3. ウェアハウス負荷</h3>
+<div class="cmd"><div class="head"><div class="title">ウェアハウス負荷の時間帯推移</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="desc">AVG_RUNNING が恒常的に高い・AVG_QUEUED_LOAD が 0 より大きい時間帯は、サイズ・クラスタ数の見直し対象です。</div>
+<div class="code"><pre>SELECT DATE_TRUNC('HOUR', START_TIME) AS HOUR,
+       WAREHOUSE_NAME,
+       ROUND(AVG(AVG_RUNNING), 2)             AS AVG_RUNNING,
+       ROUND(AVG(AVG_QUEUED_LOAD), 2)         AS AVG_QUEUED_LOAD,
+       ROUND(AVG(AVG_QUEUED_PROVISIONING), 2) AS AVG_QUEUED_PROVISIONING,
+       ROUND(AVG(AVG_BLOCKED), 2)             AS AVG_BLOCKED
+FROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_LOAD_HISTORY
+WHERE START_TIME &gt;= DATEADD(DAY, -7, CURRENT_TIMESTAMP())
+GROUP BY 1, 2
+ORDER BY 1, 2;</pre></div></div>
+
+<h3 class="sub">3-4. テーブル設計の評価</h3>
+<div class="cmd"><div class="head"><div class="title">クラスタリング状態の確認</div><div class="tags"><span class="tag">SYSTEM 関数</span></div></div>
+<div class="desc">average_depth が大きいほどマイクロパーティションの重なりが多く、プルーニングが効きにくい状態です。</div>
+<div class="code"><pre>SELECT SYSTEM$CLUSTERING_INFORMATION('SAMPLE_DB.SAMPLE_SCHEMA.ORDERS', '(ORDER_DATE)');
+SELECT SYSTEM$CLUSTERING_DEPTH('SAMPLE_DB.SAMPLE_SCHEMA.ORDERS', '(ORDER_DATE)');
+
+-- 自動クラスタリングの消費クレジット
+SELECT TABLE_NAME, ROUND(SUM(CREDITS_USED), 2) AS CREDITS
+FROM SNOWFLAKE.ACCOUNT_USAGE.AUTOMATIC_CLUSTERING_HISTORY
+WHERE START_TIME &gt;= DATEADD(DAY, -30, CURRENT_TIMESTAMP())
+GROUP BY 1 ORDER BY 2 DESC;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">検索最適化サービスの費用見積もり</div><div class="tags"><span class="tag">Enterprise 以上</span></div></div>
+<div class="code"><pre>SELECT SYSTEM$ESTIMATE_SEARCH_OPTIMIZATION_COSTS('SAMPLE_DB.SAMPLE_SCHEMA.ORDERS');
+-- 有効化
+-- ALTER TABLE SAMPLE_DB.SAMPLE_SCHEMA.ORDERS ADD SEARCH OPTIMIZATION ON EQUALITY(CUSTOMER_ID);</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">性能チューニング時のセッション設定</div><div class="tags"><span class="tag">計測の注意</span></div></div>
+<div class="desc">結果キャッシュが効くと正しい実行時間が測れないため、計測時は無効化します。</div>
+<div class="code"><pre>ALTER SESSION SET USE_CACHED_RESULT = FALSE;          -- 結果キャッシュ無効
+ALTER SESSION SET QUERY_TAG = 'PERF_TEST_20260101';   -- 後から QUERY_HISTORY で抽出しやすく
+
+-- 計測後
+SELECT QUERY_ID, TOTAL_ELAPSED_TIME/1000 AS SEC, QUERY_TEXT
+FROM TABLE(INFORMATION_SCHEMA.QUERY_HISTORY_BY_SESSION())
+WHERE QUERY_TAG = 'PERF_TEST_20260101';</pre></div></div>
+</section>
+
+<!-- ================= 04 障害 ================= -->
+<section class="case" id="incident">
+<h2><span class="num">04</span>障害時の調査</h2>
+<p class="lead">直近の事象はリアルタイム性のある INFORMATION_SCHEMA、過去の経緯は ACCOUNT_USAGE で確認します。Snowflake 側の障害が疑われる場合は <a href="https://status.snowflake.com/">Snowflake Status</a> も確認してください。</p>
+
+<h3 class="sub">4-1. 失敗したクエリ</h3>
+<div class="cmd"><div class="head"><div class="title">エラーになったクエリの一覧</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>SELECT START_TIME, QUERY_ID, USER_NAME, ROLE_NAME, WAREHOUSE_NAME,
+       ERROR_CODE, ERROR_MESSAGE, LEFT(QUERY_TEXT, 200) AS QUERY_TEXT
+FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+WHERE START_TIME &gt;= DATEADD(DAY, -1, CURRENT_TIMESTAMP())
+  AND EXECUTION_STATUS IN ('FAIL', 'INCIDENT')
+ORDER BY START_TIME DESC;
+
+-- エラー種別ごとの件数
+SELECT ERROR_CODE, ANY_VALUE(ERROR_MESSAGE) AS SAMPLE_MESSAGE, COUNT(*) AS CNT
+FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+WHERE START_TIME &gt;= DATEADD(DAY, -7, CURRENT_TIMESTAMP())
+  AND EXECUTION_STATUS = 'FAIL'
+GROUP BY 1 ORDER BY 3 DESC;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">特定クエリIDの詳細</div><div class="tags"><span class="tag is">INFORMATION_SCHEMA</span></div></div>
+<div class="code"><pre>SELECT *
+FROM TABLE(INFORMATION_SCHEMA.QUERY_HISTORY(RESULT_LIMIT =&gt; 10000))
+WHERE QUERY_ID = '&lt;QUERY_ID&gt;';
+
+-- 直前に実行したクエリのID
+SELECT LAST_QUERY_ID();</pre></div></div>
+
+<h3 class="sub">4-2. ログイン・接続障害</h3>
+<div class="cmd"><div class="head"><div class="title">ログイン失敗の確認</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="desc">認証方式・接続元IP・クライアントを確認し、パスワード誤り／ロック／ネットワークポリシー拒否などを切り分けます。</div>
+<div class="code"><pre>SELECT EVENT_TIMESTAMP, USER_NAME, CLIENT_IP, REPORTED_CLIENT_TYPE,
+       FIRST_AUTHENTICATION_FACTOR, ERROR_CODE, ERROR_MESSAGE
+FROM SNOWFLAKE.ACCOUNT_USAGE.LOGIN_HISTORY
+WHERE EVENT_TIMESTAMP &gt;= DATEADD(DAY, -1, CURRENT_TIMESTAMP())
+  AND IS_SUCCESS = 'NO'
+ORDER BY EVENT_TIMESTAMP DESC;
+
+-- 直近（リアルタイム）
+SELECT * FROM TABLE(INFORMATION_SCHEMA.LOGIN_HISTORY_BY_USER(
+  USER_NAME =&gt; 'SVC_ETL', RESULT_LIMIT =&gt; 100))
+ORDER BY EVENT_TIMESTAMP DESC;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ユーザーロックの確認と解除</div><div class="tags"><span class="tag adm">USERADMIN</span></div></div>
+<div class="code"><pre>DESC USER SVC_ETL;   -- LOCKED_UNTIL_TIME / DISABLED / NETWORK_POLICY を確認
+
+ALTER USER SVC_ETL SET MINS_TO_UNLOCK = 0;   -- ロック解除
+ALTER USER SVC_ETL SET DISABLED = FALSE;     -- 無効化解除</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">クライアント接続の疎通確認</div><div class="tags"><span class="tag">ネットワーク</span></div></div>
+<div class="desc">ファイアウォール・プロキシで許可すべきホスト一覧を出力します（SnowCD などの診断ツールにも使用）。</div>
+<div class="code"><pre>SELECT SYSTEM$ALLOWLIST();
+SELECT SYSTEM$ALLOWLIST_PRIVATELINK();   -- PrivateLink 利用時</pre></div></div>
+
+<h3 class="sub">4-3. ロック・ハング</h3>
+<div class="cmd"><div class="head"><div class="title">ロック待ち・トランザクションの確認</div><div class="tags"><span class="tag">ロック調査</span></div></div>
+<div class="code"><pre>SHOW LOCKS IN ACCOUNT;          -- 保持中・待機中のロック
+SHOW TRANSACTIONS IN ACCOUNT;   -- 実行中のトランザクション
+
+-- ロック待ちが発生したクエリ（過去分）
+SELECT QUERY_ID, USER_NAME, TRANSACTION_BLOCKED_TIME/1000 AS BLOCKED_SEC,
+       LEFT(QUERY_TEXT, 200) AS QUERY_TEXT
+FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+WHERE START_TIME &gt;= DATEADD(DAY, -1, CURRENT_TIMESTAMP())
+  AND TRANSACTION_BLOCKED_TIME &gt; 0
+ORDER BY TRANSACTION_BLOCKED_TIME DESC;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">クエリ／トランザクションの強制停止</div><div class="tags"><span class="tag adm">要所有者 or 管理者</span></div></div>
+<div class="code"><pre>SELECT SYSTEM$CANCEL_QUERY('&lt;QUERY_ID&gt;');          -- 単一クエリ
+SELECT SYSTEM$ABORT_TRANSACTION(&lt;TRANSACTION_ID&gt;);  -- SHOW TRANSACTIONS の id
+SELECT SYSTEM$ABORT_SESSION(&lt;SESSION_ID&gt;);          -- セッション
+ALTER WAREHOUSE SAMPLE_WH ABORT ALL QUERIES;        -- ウェアハウス上の全クエリ
+ALTER USER SVC_ETL ABORT ALL QUERIES;               -- ユーザーの全クエリ</pre></div></div>
+
+<h3 class="sub">4-4. データロード障害</h3>
+<div class="cmd"><div class="head"><div class="title">COPY / Snowpipe のロード履歴</div><div class="tags"><span class="tag is">INFORMATION_SCHEMA</span></div></div>
+<div class="code"><pre>SELECT LAST_LOAD_TIME, FILE_NAME, STATUS, ROW_COUNT, ROW_PARSED,
+       ERROR_COUNT, FIRST_ERROR_MESSAGE, FIRST_ERROR_LINE_NUMBER, FIRST_ERROR_COLUMN_NAME
+FROM TABLE(SAMPLE_DB.INFORMATION_SCHEMA.COPY_HISTORY(
+       TABLE_NAME =&gt; 'SAMPLE_SCHEMA.ORDERS',
+       START_TIME =&gt; DATEADD(HOUR, -24, CURRENT_TIMESTAMP())))
+WHERE STATUS &lt;&gt; 'Loaded'
+ORDER BY LAST_LOAD_TIME DESC;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ロード前の検証・エラー行の取得</div><div class="tags"><span class="tag">VALIDATION</span></div></div>
+<div class="code"><pre>-- ロードせずにエラーだけ確認
+COPY INTO SAMPLE_DB.SAMPLE_SCHEMA.ORDERS
+  FROM @SAMPLE_DB.SAMPLE_SCHEMA.STG_LANDING/orders/
+  VALIDATION_MODE = 'RETURN_ERRORS';
+
+-- 直前の COPY で拒否された行
+SELECT * FROM TABLE(VALIDATE(SAMPLE_DB.SAMPLE_SCHEMA.ORDERS, JOB_ID =&gt; '_last'));
+
+-- ステージ上のファイルを直接確認
+SELECT METADATA$FILENAME, METADATA$FILE_ROW_NUMBER, $1, $2, $3
+FROM @SAMPLE_DB.SAMPLE_SCHEMA.STG_LANDING/orders/ (FILE_FORMAT =&gt; 'SAMPLE_DB.SAMPLE_SCHEMA.FF_CSV')
+LIMIT 20;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">Snowpipe の状態確認・再取り込み</div><div class="tags"><span class="tag">PIPE</span></div></div>
+<div class="desc">executionState が RUNNING か、pendingFileCount が滞留していないか、lastReceivedMessageTimestamp（通知の受信）を確認します。</div>
+<div class="code"><pre>SELECT SYSTEM$PIPE_STATUS('SAMPLE_DB.SAMPLE_SCHEMA.PIPE_ORDERS');
+
+-- 停止中のパイプを再開
+ALTER PIPE SAMPLE_DB.SAMPLE_SCHEMA.PIPE_ORDERS SET PIPE_EXECUTION_PAUSED = FALSE;
+
+-- 通知漏れファイルの再取り込み（過去7日以内のファイル）
+ALTER PIPE SAMPLE_DB.SAMPLE_SCHEMA.PIPE_ORDERS REFRESH;</pre></div></div>
+
+<h3 class="sub">4-5. タスク・パイプライン障害</h3>
+<div class="cmd"><div class="head"><div class="title">失敗したタスクの確認</div><div class="tags"><span class="tag is">INFORMATION_SCHEMA</span></div></div>
+<div class="code"><pre>SELECT NAME, DATABASE_NAME, SCHEMA_NAME, STATE, SCHEDULED_TIME,
+       COMPLETED_TIME, ERROR_CODE, ERROR_MESSAGE, QUERY_ID
+FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY(
+       SCHEDULED_TIME_RANGE_START =&gt; DATEADD(HOUR, -24, CURRENT_TIMESTAMP()),
+       RESULT_LIMIT =&gt; 1000))
+WHERE STATE IN ('FAILED', 'CANCELLED', 'FAILED_AND_AUTO_SUSPENDED')
+ORDER BY SCHEDULED_TIME DESC;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">タスクの状態確認・手動実行・再開</div><div class="tags"><span class="tag">TASK</span></div></div>
+<div class="code"><pre>SHOW TASKS LIKE 'TASK_MERGE%' IN SCHEMA SAMPLE_DB.SAMPLE_SCHEMA;   -- state 列（started/suspended）
+SELECT * FROM TABLE(INFORMATION_SCHEMA.TASK_DEPENDENTS(
+  TASK_NAME =&gt; 'SAMPLE_DB.SAMPLE_SCHEMA.TASK_ROOT', RECURSIVE =&gt; TRUE));  -- タスクツリー
+
+EXECUTE TASK SAMPLE_DB.SAMPLE_SCHEMA.TASK_MERGE_ORDERS;            -- 手動実行
+SELECT SYSTEM$TASK_DEPENDENTS_ENABLE('SAMPLE_DB.SAMPLE_SCHEMA.TASK_ROOT');  -- 配下含め一括再開</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ストリームの陳腐化（STALE）確認</div><div class="tags"><span class="tag">STREAM</span></div></div>
+<div class="desc">消費されないまま保持期間を超えたストリームは STALE になり、再作成が必要です。</div>
+<div class="code"><pre>SHOW STREAMS IN ACCOUNT;
+SELECT "database_name", "schema_name", "name", "stale", "stale_after", "mode"
+FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))
+WHERE "stale" = 'true' OR "stale_after" &lt; DATEADD(DAY, 3, CURRENT_TIMESTAMP());</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ダイナミックテーブルのリフレッシュ失敗</div><div class="tags"><span class="tag is">INFORMATION_SCHEMA</span></div></div>
+<div class="code"><pre>SELECT NAME, STATE, STATE_CODE, STATE_MESSAGE,
+       REFRESH_START_TIME, REFRESH_END_TIME, QUERY_ID
+FROM TABLE(SAMPLE_DB.INFORMATION_SCHEMA.DYNAMIC_TABLE_REFRESH_HISTORY(
+       ERROR_ONLY =&gt; TRUE))
+ORDER BY REFRESH_START_TIME DESC;</pre></div></div>
+
+<h3 class="sub">4-6. 「データが消えた・変わった」調査</h3>
+<div class="cmd"><div class="head"><div class="title">誰がいつ DDL / DML を実行したか</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>SELECT START_TIME, USER_NAME, ROLE_NAME, QUERY_TYPE, QUERY_ID,
+       ROWS_INSERTED, ROWS_UPDATED, ROWS_DELETED,
+       LEFT(QUERY_TEXT, 300) AS QUERY_TEXT
+FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+WHERE START_TIME &gt;= DATEADD(DAY, -3, CURRENT_TIMESTAMP())
+  AND QUERY_TEXT ILIKE '%ORDERS%'
+  AND QUERY_TYPE IN ('DROP','TRUNCATE_TABLE','DELETE','UPDATE','MERGE',
+                     'ALTER_TABLE','CREATE_TABLE','CREATE_TABLE_AS_SELECT')
+ORDER BY START_TIME DESC;</pre></div></div>
+<div class="note"><b>復旧手順：</b>原因クエリを特定したら「<a href="#recovery">07 データ保護・復旧</a>」の Time Travel / UNDROP で戻します。</div>
+</section>
+
+<!-- ================= 05 セキュリティ ================= -->
+<section class="case" id="security">
+<h2><span class="num">05</span>権限・セキュリティ監査 <span class="tag" style="font-size:12px">追加</span></h2>
+<p class="lead">定期的な棚卸し（四半期など）や監査対応で使います。ACCOUNT_USAGE の参照には ACCOUNTADMIN、または SNOWFLAKE データベースへの IMPORTED PRIVILEGES（もしくは SNOWFLAKE.GOVERNANCE_VIEWER 等のデータベースロール）が必要です。</p>
+
+<div class="cmd"><div class="head"><div class="title">ACCOUNT_USAGE 参照権限の付与</div><div class="tags"><span class="tag adm">ACCOUNTADMIN</span></div></div>
+<div class="code"><pre>USE ROLE ACCOUNTADMIN;
+-- 全ビュー参照
+GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE SAMPLE_MONITOR;
+-- 用途別に絞る場合
+GRANT DATABASE ROLE SNOWFLAKE.USAGE_VIEWER      TO ROLE SAMPLE_MONITOR;  -- 利用量・コスト
+GRANT DATABASE ROLE SNOWFLAKE.GOVERNANCE_VIEWER TO ROLE SAMPLE_AUDITOR;  -- 権限・アクセス履歴</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ACCOUNTADMIN / SECURITYADMIN 保持者の確認</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>SELECT ROLE, GRANTEE_NAME AS USER_NAME, GRANTED_BY, CREATED_ON
+FROM SNOWFLAKE.ACCOUNT_USAGE.GRANTS_TO_USERS
+WHERE ROLE IN ('ACCOUNTADMIN', 'SECURITYADMIN', 'ORGADMIN')
+  AND DELETED_ON IS NULL
+ORDER BY ROLE, USER_NAME;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ユーザー棚卸し（長期未ログイン・MFA 未設定）</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>SELECT NAME, LOGIN_NAME, TYPE, DISABLED, DEFAULT_ROLE,
+       HAS_PASSWORD, HAS_RSA_PUBLIC_KEY, HAS_MFA,
+       LAST_SUCCESS_LOGIN, CREATED_ON
+FROM SNOWFLAKE.ACCOUNT_USAGE.USERS
+WHERE DELETED_ON IS NULL
+  AND (LAST_SUCCESS_LOGIN &lt; DATEADD(DAY, -90, CURRENT_TIMESTAMP())
+       OR LAST_SUCCESS_LOGIN IS NULL
+       OR (HAS_PASSWORD AND NOT HAS_MFA))
+ORDER BY LAST_SUCCESS_LOGIN NULLS FIRST;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ユーザーが実質的に持つ権限の一覧</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>SELECT u.GRANTEE_NAME AS USER_NAME, u.ROLE,
+       r.PRIVILEGE, r.GRANTED_ON, r.TABLE_CATALOG, r.TABLE_SCHEMA, r.NAME
+FROM SNOWFLAKE.ACCOUNT_USAGE.GRANTS_TO_USERS u
+JOIN SNOWFLAKE.ACCOUNT_USAGE.GRANTS_TO_ROLES r
+  ON r.GRANTEE_NAME = u.ROLE AND r.DELETED_ON IS NULL
+WHERE u.DELETED_ON IS NULL
+  AND u.GRANTEE_NAME = 'TARO_YAMADA'
+ORDER BY u.ROLE, r.GRANTED_ON, r.NAME;
+-- ※ ロール継承分まで含めるには、ロール階層を再帰CTEで展開して結合します</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">データアクセス履歴（誰がどの表を読んだか）</div><div class="tags"><span class="tag au">Enterprise 以上</span></div></div>
+<div class="code"><pre>SELECT ah.QUERY_START_TIME, ah.USER_NAME,
+       obj.value:"objectName"::STRING   AS OBJECT_NAME,
+       obj.value:"objectDomain"::STRING AS OBJECT_TYPE
+FROM SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY ah,
+     LATERAL FLATTEN(INPUT =&gt; ah.BASE_OBJECTS_ACCESSED) obj
+WHERE ah.QUERY_START_TIME &gt;= DATEADD(DAY, -7, CURRENT_TIMESTAMP())
+  AND obj.value:"objectName"::STRING = 'SAMPLE_DB.SAMPLE_SCHEMA.ORDERS'
+ORDER BY ah.QUERY_START_TIME DESC;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">権限・ポリシー変更操作の追跡</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>SELECT START_TIME, USER_NAME, ROLE_NAME, QUERY_TYPE, LEFT(QUERY_TEXT, 300) AS QUERY_TEXT
+FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+WHERE START_TIME &gt;= DATEADD(DAY, -30, CURRENT_TIMESTAMP())
+  AND QUERY_TYPE IN ('GRANT','REVOKE','CREATE_USER','ALTER_USER','DROP_USER',
+                     'CREATE_ROLE','DROP_ROLE','CREATE_NETWORK_POLICY','ALTER_NETWORK_POLICY')
+  AND EXECUTION_STATUS = 'SUCCESS'
+ORDER BY START_TIME DESC;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">マスキング／行アクセスポリシーの適用状況</div><div class="tags"><span class="tag">ガバナンス</span></div></div>
+<div class="code"><pre>SHOW MASKING POLICIES IN ACCOUNT;
+SHOW ROW ACCESS POLICIES IN ACCOUNT;
+
+SELECT POLICY_NAME, POLICY_KIND, REF_DATABASE_NAME, REF_SCHEMA_NAME,
+       REF_ENTITY_NAME, REF_COLUMN_NAME, POLICY_STATUS
+FROM SNOWFLAKE.ACCOUNT_USAGE.POLICY_REFERENCES
+ORDER BY POLICY_NAME;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">Trust Center（セキュリティ推奨設定の自動チェック）</div><div class="tags"><span class="tag adm">ACCOUNTADMIN</span></div></div>
+<div class="desc">Snowsight の［Monitoring］→［Trust Center］で CIS ベンチマーク等に基づく評価結果を確認できます。SQL では以下で参照可能です。</div>
+<div class="code"><pre>SELECT * FROM SNOWFLAKE.TRUST_CENTER.FINDINGS
+ORDER BY CREATED_ON DESC
+LIMIT 100;</pre></div></div>
+</section>
+
+<!-- ================= 06 コスト ================= -->
+<section class="case" id="cost">
+<h2><span class="num">06</span>コスト・ストレージ管理 <span class="tag" style="font-size:12px">追加</span></h2>
+<p class="lead">月次のコストレポートや、ウェアハウス設定見直しの根拠データとして使います。組織全体の金額ベースの確認は SNOWFLAKE.ORGANIZATION_USAGE を利用します。</p>
+
+<div class="cmd"><div class="head"><div class="title">日別・サービス種別のクレジット消費</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>SELECT USAGE_DATE, SERVICE_TYPE,
+       ROUND(SUM(CREDITS_USED_COMPUTE), 2)        AS COMPUTE,
+       ROUND(SUM(CREDITS_USED_CLOUD_SERVICES), 2) AS CLOUD_SERVICES,
+       ROUND(SUM(CREDITS_BILLED), 2)              AS BILLED
+FROM SNOWFLAKE.ACCOUNT_USAGE.METERING_DAILY_HISTORY
+WHERE USAGE_DATE &gt;= DATEADD(DAY, -30, CURRENT_DATE())
+GROUP BY 1, 2
+ORDER BY 1, 2;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ウェアハウス別クレジット消費（月次）</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>SELECT DATE_TRUNC('MONTH', START_TIME) AS MONTH, WAREHOUSE_NAME,
+       ROUND(SUM(CREDITS_USED), 2) AS CREDITS
+FROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY
+WHERE START_TIME &gt;= DATEADD(MONTH, -3, DATE_TRUNC('MONTH', CURRENT_DATE()))
+GROUP BY 1, 2
+ORDER BY 1, 3 DESC;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">クエリ単位のコスト（コストの大きいクエリ）</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="desc">QUERY_ATTRIBUTION_HISTORY はクエリごとのコンピュートクレジット（アイドル時間を除く）を示します。</div>
+<div class="code"><pre>SELECT q.USER_NAME, q.WAREHOUSE_NAME, q.QUERY_TAG,
+       ROUND(SUM(a.CREDITS_ATTRIBUTED_COMPUTE), 3) AS CREDITS,
+       COUNT(*) AS QUERIES
+FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_ATTRIBUTION_HISTORY a
+JOIN SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY q ON q.QUERY_ID = a.QUERY_ID
+WHERE a.START_TIME &gt;= DATEADD(DAY, -30, CURRENT_TIMESTAMP())
+GROUP BY 1, 2, 3
+ORDER BY CREDITS DESC
+LIMIT 30;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">サーバーレス機能のクレジット</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>-- Snowpipe
+SELECT PIPE_NAME, ROUND(SUM(CREDITS_USED), 2) AS CREDITS, SUM(FILES_INSERTED) AS FILES
+FROM SNOWFLAKE.ACCOUNT_USAGE.PIPE_USAGE_HISTORY
+WHERE START_TIME &gt;= DATEADD(DAY, -30, CURRENT_TIMESTAMP())
+GROUP BY 1 ORDER BY 2 DESC;
+
+-- サーバーレスタスク
+SELECT TASK_NAME, ROUND(SUM(CREDITS_USED), 2) AS CREDITS
+FROM SNOWFLAKE.ACCOUNT_USAGE.SERVERLESS_TASK_HISTORY
+WHERE START_TIME &gt;= DATEADD(DAY, -30, CURRENT_TIMESTAMP())
+GROUP BY 1 ORDER BY 2 DESC;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ストレージ使用量の推移</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="code"><pre>SELECT USAGE_DATE,
+       ROUND(STORAGE_BYTES /POWER(1024,4), 3) AS TABLE_TB,
+       ROUND(STAGE_BYTES   /POWER(1024,4), 3) AS STAGE_TB,
+       ROUND(FAILSAFE_BYTES/POWER(1024,4), 3) AS FAILSAFE_TB
+FROM SNOWFLAKE.ACCOUNT_USAGE.STORAGE_USAGE
+WHERE USAGE_DATE &gt;= DATEADD(DAY, -90, CURRENT_DATE())
+ORDER BY USAGE_DATE;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">テーブル別ストレージ内訳（Time Travel / Fail-safe 含む）</div><div class="tags"><span class="tag au">ACCOUNT_USAGE</span></div></div>
+<div class="desc">TIME_TRAVEL_BYTES や FAILSAFE_BYTES が大きい頻繁更新テーブルは、TRANSIENT 化や保持日数の短縮を検討します。</div>
+<div class="code"><pre>SELECT TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, IS_TRANSIENT,
+       ROUND(ACTIVE_BYTES            /POWER(1024,3), 2) AS ACTIVE_GB,
+       ROUND(TIME_TRAVEL_BYTES       /POWER(1024,3), 2) AS TIME_TRAVEL_GB,
+       ROUND(FAILSAFE_BYTES          /POWER(1024,3), 2) AS FAILSAFE_GB,
+       ROUND(RETAINED_FOR_CLONE_BYTES/POWER(1024,3), 2) AS CLONE_RETAINED_GB
+FROM SNOWFLAKE.ACCOUNT_USAGE.TABLE_STORAGE_METRICS
+WHERE DELETED = FALSE
+ORDER BY ACTIVE_BYTES + TIME_TRAVEL_BYTES + FAILSAFE_BYTES DESC
+LIMIT 30;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">使われていないテーブルの洗い出し</div><div class="tags"><span class="tag au">Enterprise 以上</span></div></div>
+<div class="code"><pre>WITH accessed AS (
+  SELECT DISTINCT obj.value:"objectName"::STRING AS FQN
+  FROM SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY ah,
+       LATERAL FLATTEN(INPUT =&gt; ah.BASE_OBJECTS_ACCESSED) obj
+  WHERE ah.QUERY_START_TIME &gt;= DATEADD(DAY, -90, CURRENT_TIMESTAMP())
+)
+SELECT t.TABLE_CATALOG||'.'||t.TABLE_SCHEMA||'.'||t.TABLE_NAME AS FQN,
+       ROUND(t.BYTES/POWER(1024,3), 2) AS SIZE_GB, t.LAST_ALTERED
+FROM SNOWFLAKE.ACCOUNT_USAGE.TABLES t
+LEFT JOIN accessed a
+  ON a.FQN = t.TABLE_CATALOG||'.'||t.TABLE_SCHEMA||'.'||t.TABLE_NAME
+WHERE t.DELETED IS NULL AND t.TABLE_TYPE = 'BASE TABLE' AND a.FQN IS NULL
+ORDER BY SIZE_GB DESC NULLS LAST;</pre></div></div>
+</section>
+
+<!-- ================= 07 復旧 ================= -->
+<section class="case" id="recovery">
+<h2><span class="num">07</span>データ保護・復旧 <span class="tag" style="font-size:12px">追加</span></h2>
+<p class="lead">誤操作からの復旧、リリース前のバックアップ、検証環境の作成に使います。Time Travel の保持期間内（DATA_RETENTION_TIME_IN_DAYS）でのみ有効です。</p>
+
+<div class="cmd"><div class="head"><div class="title">過去時点のデータを参照（Time Travel）</div><div class="tags"><span class="tag">AT / BEFORE</span></div></div>
+<div class="code"><pre>-- 5分前
+SELECT * FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS AT(OFFSET =&gt; -60*5);
+-- 指定日時
+SELECT * FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS
+  AT(TIMESTAMP =&gt; '2026-11-14 09:00:00 +0900'::TIMESTAMP_TZ);
+-- 誤った DML の直前
+SELECT * FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS BEFORE(STATEMENT =&gt; '&lt;QUERY_ID&gt;');</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">誤更新・誤削除からの復旧</div><div class="tags"><span class="tag">CLONE + SWAP</span></div></div>
+<div class="code"><pre>-- 1. 誤操作直前の状態をクローン
+CREATE TABLE SAMPLE_DB.SAMPLE_SCHEMA.ORDERS_RESTORE
+  CLONE SAMPLE_DB.SAMPLE_SCHEMA.ORDERS BEFORE(STATEMENT =&gt; '&lt;QUERY_ID&gt;');
+
+-- 2. 内容を確認後、入れ替え
+ALTER TABLE SAMPLE_DB.SAMPLE_SCHEMA.ORDERS
+  SWAP WITH SAMPLE_DB.SAMPLE_SCHEMA.ORDERS_RESTORE;
+
+-- 3. 不要になった旧テーブルを削除
+-- DROP TABLE SAMPLE_DB.SAMPLE_SCHEMA.ORDERS_RESTORE;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">DROP したオブジェクトの復元（UNDROP）</div><div class="tags"><span class="tag">UNDROP</span></div></div>
+<div class="code"><pre>SHOW TABLES HISTORY LIKE 'ORDERS' IN SCHEMA SAMPLE_DB.SAMPLE_SCHEMA;  -- dropped_on を確認
+UNDROP TABLE    SAMPLE_DB.SAMPLE_SCHEMA.ORDERS;
+UNDROP SCHEMA   SAMPLE_DB.SAMPLE_SCHEMA;
+UNDROP DATABASE SAMPLE_DB;
+-- 同名オブジェクトが既にある場合は、先に既存側を RENAME してから UNDROP</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">リリース前バックアップ／検証環境の作成（ゼロコピークローン）</div><div class="tags"><span class="tag">CLONE</span></div></div>
+<div class="code"><pre>CREATE DATABASE SAMPLE_DB_BK_20261115 CLONE SAMPLE_DB;          -- DB 丸ごと
+CREATE SCHEMA SAMPLE_DB.SAMPLE_SCHEMA_DEV CLONE SAMPLE_DB.SAMPLE_SCHEMA;
+CREATE TABLE  SAMPLE_DB.SAMPLE_SCHEMA.ORDERS_BK CLONE SAMPLE_DB.SAMPLE_SCHEMA.ORDERS;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">Time Travel 保持期間の確認・変更</div><div class="tags"><span class="tag">保持期間</span></div></div>
+<div class="code"><pre>SHOW PARAMETERS LIKE 'DATA_RETENTION_TIME_IN_DAYS' IN TABLE SAMPLE_DB.SAMPLE_SCHEMA.ORDERS;
+ALTER TABLE SAMPLE_DB.SAMPLE_SCHEMA.ORDERS SET DATA_RETENTION_TIME_IN_DAYS = 7;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">レプリケーション・フェイルオーバーの状態</div><div class="tags"><span class="tag">BCP / DR</span></div></div>
+<div class="code"><pre>SHOW REPLICATION GROUPS;
+SHOW FAILOVER GROUPS;
+SHOW REPLICATION ACCOUNTS;
+
+SELECT * FROM TABLE(INFORMATION_SCHEMA.REPLICATION_GROUP_REFRESH_HISTORY('SAMPLE_FG'));
+
+-- セカンダリ側で手動リフレッシュ
+-- ALTER FAILOVER GROUP SAMPLE_FG REFRESH;</pre></div></div>
+</section>
+
+<!-- ================= 08 監視 ================= -->
+<section class="case" id="monitor">
+<h2><span class="num">08</span>定常運用・監視自動化 <span class="tag" style="font-size:12px">追加</span></h2>
+<p class="lead">日々の運用作業と、異常を自動で通知する仕組みの構築コマンドです。</p>
+
+<div class="cmd"><div class="head"><div class="title">ウェアハウスの手動操作</div><div class="tags"><span class="tag">日常運用</span></div></div>
+<div class="code"><pre>ALTER WAREHOUSE SAMPLE_WH RESUME IF SUSPENDED;
+ALTER WAREHOUSE SAMPLE_WH SUSPEND;
+ALTER WAREHOUSE SAMPLE_WH SET WAREHOUSE_SIZE = 'MEDIUM';    -- 実行中クエリには影響しない
+ALTER WAREHOUSE SAMPLE_WH SET MAX_CLUSTER_COUNT = 4;
+ALTER WAREHOUSE SAMPLE_WH SET AUTO_SUSPEND = 120;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">メール通知用インテグレーション</div><div class="tags"><span class="tag adm">ACCOUNTADMIN</span></div></div>
+<div class="desc">送信先は Snowflake 上でメールアドレスを検証済みのユーザーである必要があります。</div>
+<div class="code"><pre>CREATE NOTIFICATION INTEGRATION IF NOT EXISTS SAMPLE_EMAIL_INT
+  TYPE = EMAIL
+  ENABLED = TRUE
+  ALLOWED_RECIPIENTS = ('ops-team@example.com');
+
+CALL SYSTEM$SEND_EMAIL('SAMPLE_EMAIL_INT', 'ops-team@example.com',
+                       '[Snowflake] テスト通知', '通知テストです。');</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">アラート：タスク失敗を検知して通知</div><div class="tags"><span class="tag">ALERT</span></div></div>
+<div class="code"><pre>CREATE OR REPLACE ALERT SAMPLE_DB.MONITOR.ALERT_TASK_FAILED
+  WAREHOUSE = SAMPLE_WH
+  SCHEDULE  = '10 MINUTE'
+  IF (EXISTS (
+        SELECT 1
+        FROM TABLE(SAMPLE_DB.INFORMATION_SCHEMA.TASK_HISTORY(
+               SCHEDULED_TIME_RANGE_START =&gt; SNOWFLAKE.ALERT.LAST_SUCCESSFUL_SCHEDULED_TIME(),
+               SCHEDULED_TIME_RANGE_END   =&gt; SNOWFLAKE.ALERT.SCHEDULED_TIME()))
+        WHERE STATE = 'FAILED'))
+  THEN
+    CALL SYSTEM$SEND_EMAIL('SAMPLE_EMAIL_INT', 'ops-team@example.com',
+                           '[Snowflake] タスク失敗検知',
+                           'TASK_HISTORY を確認してください。');
+
+ALTER ALERT SAMPLE_DB.MONITOR.ALERT_TASK_FAILED RESUME;
+SHOW ALERTS IN ACCOUNT;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">アラート実行履歴</div><div class="tags"><span class="tag is">INFORMATION_SCHEMA</span></div></div>
+<div class="code"><pre>SELECT NAME, STATE, SCHEDULED_TIME, COMPLETED_TIME, SQL_ERROR_MESSAGE
+FROM TABLE(INFORMATION_SCHEMA.ALERT_HISTORY(
+       SCHEDULED_TIME_RANGE_START =&gt; DATEADD(HOUR, -24, CURRENT_TIMESTAMP())))
+ORDER BY SCHEDULED_TIME DESC;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">タスクのエラー通知（タスク単位）</div><div class="tags"><span class="tag">ERROR_INTEGRATION</span></div></div>
+<div class="code"><pre>ALTER TASK SAMPLE_DB.SAMPLE_SCHEMA.TASK_MERGE_ORDERS SUSPEND;
+ALTER TASK SAMPLE_DB.SAMPLE_SCHEMA.TASK_MERGE_ORDERS SET
+  SUSPEND_TASK_AFTER_NUM_FAILURES = 3;   -- 連続失敗で自動停止
+ALTER TASK SAMPLE_DB.SAMPLE_SCHEMA.TASK_MERGE_ORDERS RESUME;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">Snowflake 側のリリース・メンテナンス状況</div><div class="tags"><span class="tag">情報収集</span></div></div>
+<div class="code"><pre>-- アカウントのバージョン
+SELECT CURRENT_VERSION();
+-- 動作変更リリース（Behavior Change Bundle）の状態
+SELECT SYSTEM$SHOW_ACTIVE_BEHAVIOR_CHANGE_BUNDLES();</pre></div></div>
+</section>
+
+<!-- ================= 09 CLI ================= -->
+<section class="case" id="cli">
+<h2><span class="num">09</span>Snowflake CLI（構築自動化） <span class="tag" style="font-size:12px">追加</span></h2>
+<p class="lead">SQL スクリプトの一括実行や CI/CD パイプラインへの組み込みに使うコマンドラインツール（<code class="i">snow</code>）です。接続情報は <code class="i">~/.snowflake/config.toml</code> に定義します。</p>
+
+<div class="cmd"><div class="head"><div class="title">接続設定・疎通確認</div><div class="tags"><span class="tag">snow</span></div></div>
+<div class="code"><pre>snow connection add                      # 対話形式で接続を登録
+snow connection list
+snow connection test -c dev              # dev 接続でテスト
+snow connection set-default dev</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">SQL の実行（構築スクリプトの一括適用）</div><div class="tags"><span class="tag">snow sql</span></div></div>
+<div class="code"><pre>snow sql -q "SHOW WAREHOUSES" -c dev
+snow sql -f ./ddl/01_roles.sql -c dev
+snow sql -f ./ddl/02_warehouses.sql -c dev --format json
+
+# 変数埋め込み（&amp;{ENV} をスクリプト内で参照）
+snow sql -f ./ddl/03_databases.sql -c prd -D "ENV=PRD"</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">オブジェクト・ステージ操作</div><div class="tags"><span class="tag">snow object / stage</span></div></div>
+<div class="code"><pre>snow object list warehouse -c dev
+snow object describe table SAMPLE_DB.SAMPLE_SCHEMA.ORDERS -c dev
+snow stage copy ./data/orders.csv @SAMPLE_DB.SAMPLE_SCHEMA.STG_INTERNAL -c dev
+snow stage list-files @SAMPLE_DB.SAMPLE_SCHEMA.STG_INTERNAL -c dev</pre></div></div>
+</section>
+
+<!-- ================= 付録 ================= -->
+<section class="case" id="views">
+<h2><span class="num">A</span>主要ビュー早見表</h2>
+<p class="lead">調査目的から参照すべきビュー・関数を引くための一覧です（特記なしは SNOWFLAKE.ACCOUNT_USAGE）。</p>
+<table class="ref">
+<thead><tr><th>目的</th><th>ビュー / 関数</th><th>主な確認項目</th></tr></thead>
+<tbody>
+<tr><td>クエリ実行履歴</td><td><code class="i">QUERY_HISTORY</code><br><code class="i">INFORMATION_SCHEMA.QUERY_HISTORY()</code></td><td>実行時間、キュー時間、スピル、スキャン量、エラー</td></tr>
+<tr><td>クエリ単位コスト</td><td><code class="i">QUERY_ATTRIBUTION_HISTORY</code></td><td>クエリごとのクレジット</td></tr>
+<tr><td>クエリプロファイル</td><td><code class="i">GET_QUERY_OPERATOR_STATS()</code></td><td>オペレーター別の時間・行数・スピル</td></tr>
+<tr><td>ウェアハウス負荷</td><td><code class="i">WAREHOUSE_LOAD_HISTORY</code></td><td>実行中・キュー・ブロック数</td></tr>
+<tr><td>ウェアハウスコスト</td><td><code class="i">WAREHOUSE_METERING_HISTORY</code></td><td>時間別クレジット</td></tr>
+<tr><td>全体コスト</td><td><code class="i">METERING_DAILY_HISTORY</code></td><td>サービス種別ごとの課金クレジット</td></tr>
+<tr><td>ログイン</td><td><code class="i">LOGIN_HISTORY</code></td><td>成功/失敗、IP、認証方式</td></tr>
+<tr><td>セッション</td><td><code class="i">SESSIONS</code></td><td>クライアント、認証方式</td></tr>
+<tr><td>権限</td><td><code class="i">GRANTS_TO_ROLES</code> / <code class="i">GRANTS_TO_USERS</code></td><td>ロールの権限、ユーザーのロール</td></tr>
+<tr><td>データアクセス</td><td><code class="i">ACCESS_HISTORY</code></td><td>参照・更新されたオブジェクトと列</td></tr>
+<tr><td>ユーザー棚卸し</td><td><code class="i">USERS</code></td><td>最終ログイン、MFA、認証方式</td></tr>
+<tr><td>ロード</td><td><code class="i">COPY_HISTORY</code> / <code class="i">LOAD_HISTORY</code></td><td>ファイル別ステータス・エラー</td></tr>
+<tr><td>Snowpipe</td><td><code class="i">PIPE_USAGE_HISTORY</code><br><code class="i">SYSTEM$PIPE_STATUS()</code></td><td>取り込み量・状態・滞留</td></tr>
+<tr><td>タスク</td><td><code class="i">TASK_HISTORY</code></td><td>実行状態・エラー</td></tr>
+<tr><td>ダイナミックテーブル</td><td><code class="i">DYNAMIC_TABLE_REFRESH_HISTORY</code></td><td>リフレッシュ状態・ラグ</td></tr>
+<tr><td>ストレージ</td><td><code class="i">STORAGE_USAGE</code> / <code class="i">TABLE_STORAGE_METRICS</code></td><td>テーブル・ステージ・Fail-safe 容量</td></tr>
+<tr><td>オブジェクト一覧</td><td><code class="i">TABLES</code> / <code class="i">COLUMNS</code> / <code class="i">VIEWS</code></td><td>定義書・棚卸し</td></tr>
+<tr><td>ポリシー適用</td><td><code class="i">POLICY_REFERENCES</code></td><td>マスキング・行アクセスの適用先</td></tr>
+</tbody>
+</table>
+
+<footer>
+  <p>本ページのコマンドは Snowflake の一般的な仕様に基づくサンプルです。エディション（Standard / Enterprise / Business Critical）や機能のリリース状況により利用できない構文・列があります。本番環境で実行する前に、必ず検証環境と<a href="https://docs.snowflake.com/ja/">Snowflake 公式ドキュメント</a>で確認してください。</p>
+  <p>最終更新：2026年11月</p>
+</footer>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+  // --- シンタックスハイライト ---
+  const KW = /\b(SELECT|FROM|WHERE|AND|OR|NOT|IN|IS|NULL|AS|ON|JOIN|LEFT|GROUP|BY|ORDER|LIMIT|DESC|ASC|NULLS|FIRST|LAST|WITH|CREATE|OR|REPLACE|IF|EXISTS|ALTER|DROP|UNDROP|GRANT|REVOKE|TO|OF|SET|USE|ROLE|SHOW|DESCRIBE|TABLE|TABLES|VIEW|VIEWS|SCHEMA|SCHEMAS|DATABASE|WAREHOUSE|WAREHOUSES|USER|USERS|TASK|STREAM|PIPE|STAGE|INTEGRATION|COPY|INTO|INSERT|UPDATE|DELETE|MERGE|TRUNCATE|CLONE|SWAP|AT|BEFORE|CALL|EXECUTE|RESUME|SUSPEND|ALL|FUTURE|USAGE|PRIMARY|KEY|CONSTRAINT|DEFAULT|COMMENT|CLUSTER|THEN|LATERAL|DISTINCT|LIKE|ILIKE|ALERT|SCHEDULE|TRIGGERS|DO|PERCENT|TRANSIENT|DYNAMIC|EXCLUDE|HISTORY|ABORT|QUERIES|POLICY|NETWORK|MONITOR|RESOURCE|FILE|FORMAT|TYPE|ENABLED)\b/g;
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function hlLine(line){
+    // コメント部分を分離（-- または # で始まるCLIコメント）
+    let code=line, cm='';
+    const m = line.match(/(^|\s)(--|#)\s.*$/) || line.match(/^(--|#).*$/);
+    if(m){ const idx=line.indexOf(m[0].trimStart()); code=line.slice(0,idx); cm=line.slice(idx); }
+    // 文字列を退避
+    const strs=[]; code=code.replace(/'[^']*'/g, s=>{strs.push(s);return '\u0000'+(strs.length-1)+'\u0000';});
+    code=esc(code).replace(KW,'<span class="k">$1</span>')
+                  .replace(/\b([A-Z_$]+\$[A-Z_]+|[A-Z_]{3,})(?=\()/g,'<span class="f">$1</span>');
+    code=code.replace(/\u0000(\d+)\u0000/g,(_,i)=>'<span class="s">'+esc(strs[+i])+'</span>');
+    return code + (cm?'<span class="c">'+esc(cm)+'</span>':'');
+  }
+  document.querySelectorAll('.code pre').forEach(pre=>{
+    const raw = pre.textContent;
+    pre.dataset.raw = raw;
+    pre.innerHTML = raw.split('\n').map(hlLine).join('\n');
+    const b=document.createElement('button'); b.className='copy'; b.type='button'; b.textContent='コピー';
+    b.addEventListener('click', async ()=>{
+      try{ await navigator.clipboard.writeText(raw); b.textContent='コピーしました'; }
+      catch(e){ const r=document.createRange(); r.selectNodeContents(pre); const s=getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent='選択しました（Ctrl+C）'; }
+      setTimeout(()=>b.textContent='コピー',1600);
+    });
+    pre.parentElement.appendChild(b);
+  });
+
+  // --- 検索フィルタ ---
+  const q=document.getElementById('q'), empty=document.getElementById('empty');
+  const cards=[...document.querySelectorAll('.cmd')];
+  q.addEventListener('input', ()=>{
+    const v=q.value.trim().toLowerCase(); let hit=0;
+    cards.forEach(c=>{ const ok=!v || c.textContent.toLowerCase().includes(v) || (c.querySelector('pre').dataset.raw||'').toLowerCase().includes(v);
+      c.classList.toggle('hidden',!ok); if(ok) hit++; });
+    document.querySelectorAll('h3.sub').forEach(h=>{
+      let n=h.nextElementSibling, any=false;
+      while(n && !n.matches('h3.sub')){ if(n.matches('.cmd') && !n.classList.contains('hidden')) any=true; n=n.nextElementSibling; }
+      h.classList.toggle('hidden', !!v && !any);
+    });
+    document.querySelectorAll('section.case').forEach(s=>{
+      const has=s.querySelector('.cmd:not(.hidden)') || (!v);
+      s.classList.toggle('hidden', !has && s.id!=='views');
+      if(s.id==='views') s.classList.toggle('hidden', !!v);
+    });
+    document.querySelectorAll('.note').forEach(n=>n.classList.toggle('hidden',!!v));
+    empty.style.display = (v && hit===0) ? 'block':'none';
+  });
+})();
+</script>
+</body>
+</html>
