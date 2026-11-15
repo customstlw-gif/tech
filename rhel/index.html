@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RHEL 9.8 運用コマンド リファレンス</title>
+<meta name="description" content="Red Hat Enterprise Linux 9.8 の構築・構成情報取得・性能情報取得・障害調査で使うコマンドを用途別に整理したリファレンス">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f8fb; --panel:#ffffff; --ink:#1b2430; --muted:#5b6778; --line:#e2e7ee;
+  --accent:#1f6feb; --accent-soft:#e8f0fe; --code-bg:#0f1b2d; --code-ink:#dbe6f5;
+  --kw:#7cc4ff; --cm:#7f93ad; --str:#f2c38a; --fn:#b7e28f; --warn:#b54708; --warn-bg:#fff4e5;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0d131c; --panel:#141c27; --ink:#e4eaf2; --muted:#9aa7b8; --line:#243041;
+    --accent:#5aa2ff; --accent-soft:#1a2a40; --code-bg:#0a111b; --warn:#f5a25a; --warn-bg:#2a1d10; }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP",system-ui,sans-serif;line-height:1.7;font-size:15px}
+header.top{position:sticky;top:0;z-index:10;background:var(--panel);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+header.top h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.02em}
+header.top h1 span{color:var(--accent)}
+header.top a.home{color:var(--muted);text-decoration:none;font-size:13px;border:1px solid var(--line);padding:4px 10px;border-radius:6px}
+header.top a.home:hover{color:var(--accent);border-color:var(--accent)}
+.search{flex:1;min-width:220px;max-width:460px;margin-left:auto;position:relative}
+.search input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.5}
+.layout{display:grid;grid-template-columns:260px 1fr;max-width:1320px;margin:0 auto}
+nav.toc{position:sticky;top:62px;align-self:start;height:calc(100vh - 62px);overflow:auto;padding:24px 16px 40px 24px;border-right:1px solid var(--line)}
+nav.toc .grp{font-size:12px;color:var(--muted);font-weight:700;margin:18px 0 6px;letter-spacing:.05em}
+nav.toc a{display:block;color:var(--ink);text-decoration:none;padding:4px 10px;border-radius:6px;font-size:14px}
+nav.toc a:hover{background:var(--accent-soft);color:var(--accent)}
+nav.toc a .n{display:inline-block;width:24px;color:var(--muted);font-size:12px}
+main{padding:28px 36px 80px;min-width:0}
+.hero{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 26px;margin-bottom:28px}
+.hero h2{margin:0 0 6px;font-size:22px}
+.hero p{margin:6px 0;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tag{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--bg)}
+.tag.au{border-color:#9ec5ff;color:#1f5fbf}
+.tag.is{border-color:#a6e3b8;color:#1d7a3d}
+.tag.adm{border-color:#f5c08a;color:#a1520f}
+@media (prefers-color-scheme: dark){.tag.au{color:#8fc0ff}.tag.is{color:#8fdca6}.tag.adm{color:#f5b072}}
+section.case{margin-top:44px}
+section.case>h2{font-size:21px;margin:0 0 4px;padding-bottom:8px;border-bottom:2px solid var(--accent);display:flex;gap:10px;align-items:baseline}
+section.case>h2 .num{color:var(--accent);font-size:15px;font-family:"JetBrains Mono",monospace}
+section.case>p.lead{color:var(--muted);margin:8px 0 16px}
+h3.sub{font-size:16px;margin:26px 0 10px;padding-left:10px;border-left:4px solid var(--accent)}
+.cmd{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:12px 0;overflow:hidden}
+.cmd .head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:12px 16px 6px}
+.cmd .title{font-weight:700;font-size:15px}
+.cmd .desc{color:var(--muted);font-size:13.5px;padding:0 16px 10px}
+.cmd .tags{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+.code{position:relative;background:var(--code-bg)}
+.code pre{margin:0;padding:14px 16px;overflow:auto;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px;line-height:1.6;color:var(--code-ink);tab-size:2}
+.code .copy{position:absolute;top:8px;right:8px;background:#243650;color:#dbe6f5;border:0;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;opacity:.8}
+.code .copy:hover{opacity:1}
+.k{color:var(--kw)} .c{color:var(--cm);font-style:italic} .s{color:var(--str)} .f{color:var(--fn)}
+.note{background:var(--warn-bg);border-left:4px solid var(--warn);padding:10px 14px;border-radius:6px;margin:12px 0;font-size:13.5px}
+.note b{color:var(--warn)}
+table.ref{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13.5px;margin:12px 0}
+table.ref th,table.ref td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.ref th{background:var(--accent-soft);font-weight:700}
+code.i{font-family:"JetBrains Mono",monospace;font-size:12.5px;background:var(--accent-soft);padding:1px 6px;border-radius:4px}
+.hidden{display:none!important}
+.empty{display:none;padding:30px;text-align:center;color:var(--muted)}
+footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);margin-top:60px;padding-top:16px}
+@media (max-width:900px){.layout{grid-template-columns:1fr}nav.toc{display:none}main{padding:20px 16px 60px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a href="../" class="home" title="トップへ戻る">← トップ</a>
+  <h1>RHEL 9.8 <span>運用コマンド</span> リファレンス</h1>
+  <div class="search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="コマンド・用途で絞り込み（例:ログ, sar, SELinux）">
+  </div>
+</header>
+
+<div class="layout">
+<nav class="toc" aria-label="目次">
+  <div class="grp">基本ケース</div>
+  <a href="#build"><span class="n">01</span>構築時のコマンド</a><a href="#config"><span class="n">02</span>構築完了後の構成情報の取得</a><a href="#perf"><span class="n">03</span>性能情報の取得</a><a href="#trouble"><span class="n">04</span>障害時の調査</a>
+  <div class="grp">追加ケース</div><a href="#patch"><span class="n">05</span>パッチ適用・アップデート</a><a href="#backup"><span class="n">06</span>バックアップ・リストア</a><a href="#ops"><span class="n">07</span>停止・再起動・日常運用</a><a href="#container"><span class="n">08</span>コンテナ(Podman)</a>
+  <div class="grp">付録</div>
+  <a href="#evidence"><span class="n">A</span>エビデンス一括取得スクリプト</a>
+  <a href="#notes"><span class="n">B</span>利用上の注意</a>
+</nav>
+
+<main>
+<div class="hero">
+  <h2>このページについて</h2>
+  <p>Red Hat Enterprise Linux 9.8 の構築・運用で使うコマンドを、利用シーン別に整理したリファレンスです。右上の「コピー」ボタンでクリップボードに取得できます。</p>
+  <p><code class="i">'&lt;...&gt;'</code> 部分と、例として記載したホスト名・IPアドレス・パスは環境に合わせて置き換えてください。</p>
+  <p>対象バージョン：Red Hat Enterprise Linux 9.8 ／ 最終更新：2026年11月</p>
+  <div class="legend">
+    <span class="tag au">root</span><span style="font-size:12.5px;color:var(--muted)">… root権限（sudo）が必要</span>
+    <span class="tag is">pkg</span><span style="font-size:12.5px;color:var(--muted)">… 追加パッケージ・前提製品が必要な場合あり</span>
+    <span class="tag adm">注意</span><span style="font-size:12.5px;color:var(--muted)">… サービス影響・設定変更あり</span>
+  </div>
+</div>
+
+<div id="empty" class="empty">該当するコマンドが見つかりませんでした。</div>
+
+<!-- ================= 01 構築時のコマンド ================= -->
+<section class="case" id="build">
+<h2><span class="num">01</span>構築時のコマンド</h2>
+<p class="lead">OSインストール直後から運用開始までの初期設定で使うコマンドです。</p>
+<h3 class="sub">1-1. 基本設定(ホスト名・時刻・ロケール)</h3>
+<div class="cmd"><div class="head"><div class="title">ホスト名を設定(静的ホスト名)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>hostnamectl set-hostname web01.example.com</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">タイムゾーンを日本時間に設定</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>timedatectl set-timezone Asia/Tokyo</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">NTPによる時刻同期を有効化</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>timedatectl set-ntp true</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">日本語ロケールパッケージを導入</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>dnf install -y glibc-langpack-ja</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">システムロケールを日本語に設定</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>localectl set-locale LANG=ja_JP.UTF-8</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">コンソールのキーボード配列を日本語106に設定</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>localectl set-keymap jp106</pre></div></div>
+<h3 class="sub">1-2. サブスクリプション・リポジトリ</h3>
+<div class="cmd"><div class="head"><div class="title">アクティベーションキーでシステムを登録</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>subscription-manager register --org=&lt;ORG_ID&gt; --activationkey=&lt;KEY&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">登録とRed Hat Insights接続を一括で実施</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>rhc connect --organization &lt;ORG_ID&gt; --activation-key &lt;KEY&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">マイナーリリースを9.8に固定(意図しない9.x更新を防止)</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>subscription-manager release --set=9.8</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">有効なリポジトリを確認</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>subscription-manager repos --list-enabled</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">追加リポジトリを有効化(例:CRB)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>subscription-manager repos --enable=codeready-builder-for-rhel-9-x86_64-rpms</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">利用可能なリポジトリ一覧</div><div class="tags"></div></div>
+<div class="code"><pre>dnf repolist</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">全パッケージを最新化</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>dnf update -y</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">パッケージを導入</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>dnf install -y &lt;package&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">パッケージグループを一括導入</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>dnf group install -y "Server"</pre></div></div>
+<h3 class="sub">1-3. ネットワーク(NetworkManager)</h3>
+<div class="cmd"><div class="head"><div class="title">接続プロファイル一覧(RHEL 9 は keyfile 形式が標準)</div><div class="tags"></div></div>
+<div class="code"><pre>nmcli connection show</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">固定IP・GW・DNSを設定</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>nmcli con mod ens3 ipv4.method manual ipv4.addresses 192.168.10.11/24 ipv4.gateway 192.168.10.1 ipv4.dns "192.168.10.53"</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">起動時の自動接続を有効化</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>nmcli con mod ens3 connection.autoconnect yes</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">設定を反映(接続の再有効化)</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>nmcli con up ens3</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ボンディングI/Fを作成</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>nmcli con add type bond con-name bond0 ifname bond0 bond.options "mode=active-backup,miimon=100"</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ボンドにポートを追加</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>nmcli con add type ethernet con-name bond0-p1 ifname ens4 master bond0</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">VLAN I/Fを作成</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>nmcli con add type vlan con-name vlan100 dev ens3 id 100</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">TUIでネットワーク設定</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>nmtui</pre></div></div>
+<h3 class="sub">1-4. ストレージ(パーティション・LVM・ファイルシステム)</h3>
+<div class="cmd"><div class="head"><div class="title">ディスク・パーティション構成を確認</div><div class="tags"></div></div>
+<div class="code"><pre>lsblk</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">GPTでパーティション作成しLVMフラグ設定</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>parted -s /dev/sdb mklabel gpt mkpart primary 0% 100% set 1 lvm on</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">物理ボリューム(PV)を作成</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>pvcreate /dev/sdb1</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ボリュームグループ(VG)を作成</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>vgcreate vgdata /dev/sdb1</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">論理ボリューム(LV)をVGの空き全量で作成</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>lvcreate -n lvdata -l 100%FREE vgdata</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">XFSでフォーマット</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>mkfs.xfs /dev/vgdata/lvdata</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">UUIDを確認(fstab記載用)</div><div class="tags"></div></div>
+<div class="code"><pre>blkid /dev/vgdata/lvdata</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">fstabに永続マウントを追記</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>echo "UUID=&lt;UUID&gt; /data xfs defaults 0 0" &gt;&gt; /etc/fstab</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">fstabの記述を検証(再起動前に必ず実施)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>findmnt --verify</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">fstabの内容でマウント</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>mount -a</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">LVを拡張しファイルシステムも同時拡張</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>lvextend -r -L +10G /dev/vgdata/lvdata</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">スワップ領域を作成・有効化</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>mkswap /dev/vgdata/lvswap &amp;&amp; swapon /dev/vgdata/lvswap</pre></div></div>
+<h3 class="sub">1-5. ユーザー・権限</h3>
+<div class="cmd"><div class="head"><div class="title">ユーザー作成(wheelグループ付与でsudo可)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>useradd -m -G wheel opsuser</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">パスワード設定</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>passwd opsuser</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">パスワード有効期限90日・14日前警告</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>chage -M 90 -W 14 opsuser</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">sudo権限を個別ファイルで安全に定義</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>visudo -f /etc/sudoers.d/ops</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">SSH鍵ペア作成</div><div class="tags"></div></div>
+<div class="code"><pre>ssh-keygen -t ed25519</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">公開鍵を配布</div><div class="tags"></div></div>
+<div class="code"><pre>ssh-copy-id opsuser@web01</pre></div></div>
+<h3 class="sub">1-6. サービス管理(systemd)</h3>
+<div class="cmd"><div class="head"><div class="title">自動起動を有効化し即時起動</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>systemctl enable --now httpd</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">自動起動を無効化し停止</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>systemctl disable --now &lt;service&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">サービスを起動不可にする</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>systemctl mask &lt;service&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">既定ターゲットをCUIに設定</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>systemctl set-default multi-user.target</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ユニットファイル変更を反映</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>systemctl daemon-reload</pre></div></div>
+<h3 class="sub">1-7. セキュリティ(firewalld・SELinux・暗号ポリシー)</h3>
+<div class="cmd"><div class="head"><div class="title">サービス単位で許可(永続)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>firewall-cmd --permanent --add-service=https</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ポート単位で許可(永続)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>firewall-cmd --permanent --add-port=8080/tcp</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">送信元を限定して許可</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" source address="10.0.0.0/8" service name="ssh" accept'</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">永続設定をランタイムへ反映</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>firewall-cmd --reload</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">SELinuxモード確認(Enforcing推奨)</div><div class="tags"></div></div>
+<div class="code"><pre>getenforce</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">独自ディレクトリにSELinuxラベルを定義</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: policycoreutils-python-utils</span></div></div>
+<div class="code"><pre>semanage fcontext -a -t httpd_sys_content_t "/web(/.*)?"</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">定義したラベルを適用</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>restorecon -Rv /web</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">非標準ポートをSELinuxに許可</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: policycoreutils-python-utils</span></div></div>
+<div class="code"><pre>semanage port -a -t http_port_t -p tcp 8080</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">SELinuxブール値を永続変更</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>setsebool -P httpd_can_network_connect on</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">システム全体の暗号ポリシーを設定(DEFAULT/FUTURE/FIPS等)</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>update-crypto-policies --set DEFAULT</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">sshd_config の構文チェック(再起動前に実施)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>sshd -t</pre></div></div>
+<h3 class="sub">1-8. 時刻同期(chrony)</h3>
+<div class="cmd"><div class="head"><div class="title">参照NTPサーバー(server/pool行)を設定</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>vi /etc/chrony.conf</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">chronydを起動</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>systemctl enable --now chronyd</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">同期先と同期状態を確認(*が同期中)</div><div class="tags"></div></div>
+<div class="code"><pre>chronyc sources -v</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">時刻を即時補正</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>chronyc makestep</pre></div></div>
+<h3 class="sub">1-9. カーネル・チューニング・kdump</h3>
+<div class="cmd"><div class="head"><div class="title">用途に応じたtunedプロファイルを適用</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>tuned-adm profile throughput-performance</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">カーネルパラメータを永続設定</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>echo "vm.swappiness = 10" &gt; /etc/sysctl.d/90-custom.conf</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">sysctl設定を全て再読込</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>sysctl --system</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">カーネル起動パラメータを追加</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>grubby --update-kernel=ALL --args="&lt;param&gt;"</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">crashkernel予約値を推奨値に設定(要再起動)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>kdumpctl reset-crashkernel --kernel=ALL</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">kdumpを有効化</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>systemctl enable --now kdump</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">journalを永続化(前回起動時ログの保全用)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>mkdir -p /var/log/journal &amp;&amp; systemctl restart systemd-journald</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">Web管理コンソール(Cockpit, 9090/tcp)を有効化</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>systemctl enable --now cockpit.socket</pre></div></div>
+</section>
+<!-- ================= 02 構築完了後の構成情報の取得 ================= -->
+<section class="case" id="config">
+<h2><span class="num">02</span>構築完了後の構成情報の取得</h2>
+<p class="lead">構築完了報告書・パラメータシートの裏付け(エビデンス)として取得する情報です。</p>
+<h3 class="sub">2-1. OS・ハードウェア</h3>
+<div class="cmd"><div class="head"><div class="title">OSバージョン</div><div class="tags"></div></div>
+<div class="code"><pre>cat /etc/redhat-release</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">OS詳細情報</div><div class="tags"></div></div>
+<div class="code"><pre>cat /etc/os-release</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">カーネルバージョン・アーキテクチャ</div><div class="tags"></div></div>
+<div class="code"><pre>uname -a</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ホスト名・仮想化種別・カーネル等の要約</div><div class="tags"></div></div>
+<div class="code"><pre>hostnamectl</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">CPU構成(コア数・ソケット・NUMA)</div><div class="tags"></div></div>
+<div class="code"><pre>lscpu</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">メモリ・スワップ容量</div><div class="tags"></div></div>
+<div class="code"><pre>free -h</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">メモリブロック構成</div><div class="tags"></div></div>
+<div class="code"><pre>lsmem</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">筐体情報(メーカー・型番・シリアル)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>dmidecode -t system</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">搭載メモリモジュール</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>dmidecode -t memory</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">PCIデバイス(NIC・HBA等)</div><div class="tags"></div></div>
+<div class="code"><pre>lspci</pre></div></div>
+<h3 class="sub">2-2. ストレージ</h3>
+<div class="cmd"><div class="head"><div class="title">ディスク・パーティション・FS種別・UUID</div><div class="tags"></div></div>
+<div class="code"><pre>lsblk -f</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ファイルシステム使用量と種別</div><div class="tags"></div></div>
+<div class="code"><pre>df -hT</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">マウントツリー(オプション含む)</div><div class="tags"></div></div>
+<div class="code"><pre>findmnt</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">永続マウント設定</div><div class="tags"></div></div>
+<div class="code"><pre>cat /etc/fstab</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">LVM構成</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>pvs; vgs; lvs</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">マルチパス構成(SAN接続時)</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: device-mapper-multipath</span></div></div>
+<div class="code"><pre>multipath -ll</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">スワップ構成</div><div class="tags"></div></div>
+<div class="code"><pre>swapon --show</pre></div></div>
+<h3 class="sub">2-3. ネットワーク</h3>
+<div class="cmd"><div class="head"><div class="title">IPアドレス一覧(簡易表示)</div><div class="tags"></div></div>
+<div class="code"><pre>ip -br addr</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ルーティングテーブル</div><div class="tags"></div></div>
+<div class="code"><pre>ip route; ip -6 route</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">デバイスと接続の状態</div><div class="tags"></div></div>
+<div class="code"><pre>nmcli device status</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">接続プロファイルの全設定値</div><div class="tags"></div></div>
+<div class="code"><pre>nmcli -f all con show ens3</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">名前解決設定</div><div class="tags"></div></div>
+<div class="code"><pre>cat /etc/resolv.conf /etc/hosts</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">待ち受けポートとプロセス</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>ss -tulnp</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">リンク速度・デュプレックス</div><div class="tags"></div></div>
+<div class="code"><pre>ethtool ens3</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">NICドライバ・ファームウェア</div><div class="tags"></div></div>
+<div class="code"><pre>ethtool -i ens3</pre></div></div>
+<h3 class="sub">2-4. ソフトウェア・パッケージ</h3>
+<div class="cmd"><div class="head"><div class="title">導入パッケージ一覧(比較しやすい形式)</div><div class="tags"></div></div>
+<div class="code"><pre>rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">パッケージ操作履歴</div><div class="tags"></div></div>
+<div class="code"><pre>dnf history</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">リポジトリ詳細</div><div class="tags"></div></div>
+<div class="code"><pre>dnf repolist -v</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">サブスクリプション状態</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>subscription-manager status</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">固定中のリリース</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>subscription-manager release --show</pre></div></div>
+<h3 class="sub">2-5. サービス・ジョブ</h3>
+<div class="cmd"><div class="head"><div class="title">自動起動が有効なサービス</div><div class="tags"></div></div>
+<div class="code"><pre>systemctl list-unit-files --type=service --state=enabled</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">起動中のサービス</div><div class="tags"></div></div>
+<div class="code"><pre>systemctl list-units --type=service --state=running</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">既定ターゲット</div><div class="tags"></div></div>
+<div class="code"><pre>systemctl get-default</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">systemdタイマー一覧</div><div class="tags"></div></div>
+<div class="code"><pre>systemctl list-timers --all</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">cron設定</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>crontab -l -u &lt;user&gt;; ls /etc/cron.d</pre></div></div>
+<h3 class="sub">2-6. セキュリティ設定</h3>
+<div class="cmd"><div class="head"><div class="title">全ゾーンのファイアウォール設定</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>firewall-cmd --list-all-zones</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">SELinux状態・ポリシー</div><div class="tags"></div></div>
+<div class="code"><pre>sestatus</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">標準から変更したSELinux設定のみ表示</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>semanage boolean -l -C; semanage fcontext -l -C</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">暗号ポリシー</div><div class="tags"></div></div>
+<div class="code"><pre>update-crypto-policies --show</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">sshdの有効な設定値(デフォルト含む)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>sshd -T</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">認証プロファイル</div><div class="tags"></div></div>
+<div class="code"><pre>authselect current</pre></div></div>
+<h3 class="sub">2-7. ユーザー・グループ</h3>
+<div class="cmd"><div class="head"><div class="title">ユーザー・グループ一覧</div><div class="tags"></div></div>
+<div class="code"><pre>getent passwd; getent group</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">パスワード有効期限</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>chage -l &lt;user&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">sudo設定</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>cat /etc/sudoers.d/*</pre></div></div>
+<h3 class="sub">2-8. カーネル・時刻・ロケール</h3>
+<div class="cmd"><div class="head"><div class="title">全カーネルパラメータ</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>sysctl -a</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">起動時カーネルパラメータ</div><div class="tags"></div></div>
+<div class="code"><pre>cat /proc/cmdline</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ブートエントリ一覧</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>grubby --info=ALL</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">適用中のtunedプロファイル</div><div class="tags"></div></div>
+<div class="code"><pre>tuned-adm active</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">kdump状態・予約メモリ</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>kdumpctl status; kdumpctl showmem</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">時刻・同期設定</div><div class="tags"></div></div>
+<div class="code"><pre>timedatectl; chronyc sources</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ロケール・キーマップ</div><div class="tags"></div></div>
+<div class="code"><pre>localectl</pre></div></div>
+<h3 class="sub">2-9. 一括取得</h3>
+<div class="cmd"><div class="head"><div class="title">構成情報・ログを一括アーカイブ(/var/tmp に出力)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>sos report --batch</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">Ansibleでfacts(構成情報)をJSON取得</div><div class="tags"><span class="tag is">pkg: ansible-core</span></div></div>
+<div class="code"><pre>ansible &lt;host&gt; -m setup</pre></div></div>
+</section>
+<!-- ================= 03 性能情報の取得 ================= -->
+<section class="case" id="perf">
+<h2><span class="num">03</span>性能情報の取得</h2>
+<p class="lead">リソースの使用状況やボトルネックを把握するためのコマンドです。sysstat を導入すると過去分の性能データも参照できます。</p>
+<h3 class="sub">3-1. 全体概況</h3>
+<div class="cmd"><div class="head"><div class="title">ロードアベレージ(1/5/15分)</div><div class="tags"></div></div>
+<div class="code"><pre>uptime</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">CPU・メモリ上位プロセスのスナップショット</div><div class="tags"></div></div>
+<div class="code"><pre>top -b -n 1 | head -30</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">指定プロセスのスレッド別CPU</div><div class="tags"></div></div>
+<div class="code"><pre>top -H -p &lt;PID&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">CPU・メモリ・スワップ・I/O待ちの推移(1秒×10回)</div><div class="tags"></div></div>
+<div class="code"><pre>vmstat 1 10</pre></div></div>
+<h3 class="sub">3-2. sysstat(sar)による時系列取得</h3>
+<div class="cmd"><div class="head"><div class="title">sysstat導入・定期収集開始(既定10分間隔)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>dnf install -y sysstat &amp;&amp; systemctl enable --now sysstat</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">CPU使用率</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>sar -u 1 10</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">メモリ使用状況</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>sar -r 1 10</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ディスクI/O(デバイス名表示)</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>sar -d -p 1 10</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">NIC別トラフィック</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>sar -n DEV 1 10</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">NICエラー・ドロップ</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>sar -n EDEV 1 10</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">実行キュー・ロードアベレージ</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>sar -q 1 10</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">過去データ(15日)の時間帯指定参照</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>sar -f /var/log/sa/sa15 -s 10:00:00 -e 11:00:00</pre></div></div>
+<h3 class="sub">3-3. CPU</h3>
+<div class="cmd"><div class="head"><div class="title">CPUコア別使用率(偏り確認)</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>mpstat -P ALL 1 5</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">プロセス別CPU使用率</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>pidstat -u 1 5</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">CPU使用率上位プロセス</div><div class="tags"></div></div>
+<div class="code"><pre>ps aux --sort=-%cpu | head</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">関数レベルのCPUホットスポット</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: perf</span></div></div>
+<div class="code"><pre>perf top</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">プロファイル取得・解析</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: perf</span></div></div>
+<div class="code"><pre>perf record -g -p &lt;PID&gt; -- sleep 30; perf report</pre></div></div>
+<h3 class="sub">3-4. メモリ</h3>
+<div class="cmd"><div class="head"><div class="title">メモリ使用量(buff/cache分離表示)</div><div class="tags"></div></div>
+<div class="code"><pre>free -h -w</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">メモリ詳細</div><div class="tags"></div></div>
+<div class="code"><pre>cat /proc/meminfo</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">物理メモリ使用量上位プロセス</div><div class="tags"></div></div>
+<div class="code"><pre>ps aux --sort=-rss | head</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">プロセス別メモリ・ページフォルト</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>pidstat -r 1 5</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">カーネルslabキャッシュ使用量</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>slabtop -o</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">NUMAノード別メモリ</div><div class="tags"><span class="tag is">pkg: numactl</span></div></div>
+<div class="code"><pre>numastat -m</pre></div></div>
+<h3 class="sub">3-5. ディスクI/O</h3>
+<div class="cmd"><div class="head"><div class="title">デバイス別I/O(%util・await・待ち行列)</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>iostat -xz 1 5</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">プロセス別I/O量</div><div class="tags"><span class="tag is">pkg: sysstat</span></div></div>
+<div class="code"><pre>pidstat -d 1 5</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">I/Oを発生させているプロセス</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: iotop</span></div></div>
+<div class="code"><pre>iotop -oPa</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">I/O待ち(D状態)プロセスの抽出</div><div class="tags"></div></div>
+<div class="code"><pre>ps -eo pid,stat,wchan:20,cmd | awk '$2 ~ /D/'</pre></div></div>
+<h3 class="sub">3-6. ネットワーク</h3>
+<div class="cmd"><div class="head"><div class="title">ソケット統計サマリ</div><div class="tags"></div></div>
+<div class="code"><pre>ss -s</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">I/F別送受信・エラー・ドロップ</div><div class="tags"></div></div>
+<div class="code"><pre>ip -s link</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">TCP再送等のプロトコル統計</div><div class="tags"></div></div>
+<div class="code"><pre>nstat -az</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">NICドライバ統計</div><div class="tags"></div></div>
+<div class="code"><pre>ethtool -S ens3</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">帯域測定(サーバー/クライアント)</div><div class="tags"><span class="tag is">pkg: iperf3</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>iperf3 -s / iperf3 -c &lt;server&gt;</pre></div></div>
+<h3 class="sub">3-7. PCP(Performance Co-Pilot)</h3>
+<div class="cmd"><div class="head"><div class="title">PCP導入(自動で記録開始)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>dnf install -y pcp-zeroconf</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">vmstat相当の概況</div><div class="tags"><span class="tag is">pkg: pcp</span></div></div>
+<div class="code"><pre>pmstat -t 1</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">dstat相当の複合表示</div><div class="tags"><span class="tag is">pkg: pcp-system-tools</span></div></div>
+<div class="code"><pre>pcp dstat --time --cpu --mem --disk --net 1</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">記録済みアーカイブから過去データを表示</div><div class="tags"><span class="tag is">pkg: pcp</span></div></div>
+<div class="code"><pre>pmrep -a /var/log/pcp/pmlogger/$(hostname)/&lt;archive&gt; :vmstat</pre></div></div>
+</section>
+<!-- ================= 04 障害時の調査 ================= -->
+<section class="case" id="trouble">
+<h2><span class="num">04</span>障害時の調査</h2>
+<p class="lead">初動(状況把握)→ログ確認→リソース確認→個別調査の順に実施します。証跡保全のため、調査前に sos report を取得しておくことを推奨します。</p>
+<h3 class="sub">4-1. 初動・状況把握</h3>
+<div class="cmd"><div class="head"><div class="title">起動失敗しているユニット</div><div class="tags"></div></div>
+<div class="code"><pre>systemctl --failed</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">サービス状態と直近ログ</div><div class="tags"></div></div>
+<div class="code"><pre>systemctl status &lt;service&gt; -l --no-pager</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">稼働時間・再起動/シャットダウン履歴</div><div class="tags"></div></div>
+<div class="code"><pre>uptime; last -x | head</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ログイン中ユーザー</div><div class="tags"></div></div>
+<div class="code"><pre>who; w</pre></div></div>
+<h3 class="sub">4-2. ログ確認(journald / rsyslog)</h3>
+<div class="cmd"><div class="head"><div class="title">今回起動以降のエラー以上のログ</div><div class="tags"></div></div>
+<div class="code"><pre>journalctl -p err -b</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">サービス別・時間帯指定</div><div class="tags"></div></div>
+<div class="code"><pre>journalctl -u &lt;service&gt; --since "2026-11-15 10:00" --until "2026-11-15 11:00"</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">起動履歴一覧</div><div class="tags"></div></div>
+<div class="code"><pre>journalctl --list-boots</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">前回起動時のログ末尾(突然の再起動調査、要永続化)</div><div class="tags"></div></div>
+<div class="code"><pre>journalctl -b -1 -e</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">カーネルメッセージ</div><div class="tags"></div></div>
+<div class="code"><pre>journalctl -k</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">リアルタイム追跡</div><div class="tags"></div></div>
+<div class="code"><pre>journalctl -f</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">カーネルリングバッファ(時刻表示)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>dmesg -T --level=err,warn</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">システムログ</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>less /var/log/messages</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">認証・sudoログ</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>less /var/log/secure</pre></div></div>
+<h3 class="sub">4-3. リソース枯渇</h3>
+<div class="cmd"><div class="head"><div class="title">容量・iノードの枯渇確認</div><div class="tags"></div></div>
+<div class="code"><pre>df -h; df -i</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">容量を消費しているディレクトリ</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>du -xh --max-depth=1 / 2&gt;/dev/null | sort -h</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">削除済みだが開かれたままのファイル(df と du の差異原因)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>lsof +L1</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">OOM Killer発動の有無</div><div class="tags"></div></div>
+<div class="code"><pre>journalctl -k | grep -i -E "out of memory|oom"</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">リソース上限(open files等)</div><div class="tags"></div></div>
+<div class="code"><pre>ulimit -a; cat /proc/&lt;PID&gt;/limits</pre></div></div>
+<h3 class="sub">4-4. プロセス</h3>
+<div class="cmd"><div class="head"><div class="title">プロセスの親子関係</div><div class="tags"></div></div>
+<div class="code"><pre>ps -ef --forest</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">プロセスが開いているファイル・ソケット</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>lsof -p &lt;PID&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">システムコールトレース(ハング調査)</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: strace</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>strace -f -tt -p &lt;PID&gt; -o /tmp/strace.log</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">稼働中プロセスのコアダンプ取得</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: gdb</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>gcore -o /tmp/core &lt;PID&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">異常終了したプロセスのコアダンプ一覧</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>coredumpctl list</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">コアダンプの詳細(バックトレース)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>coredumpctl info &lt;PID&gt;</pre></div></div>
+<h3 class="sub">4-5. ネットワーク</h3>
+<div class="cmd"><div class="head"><div class="title">IP・経路の確認</div><div class="tags"></div></div>
+<div class="code"><pre>ip -br addr; ip route</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">疎通確認</div><div class="tags"></div></div>
+<div class="code"><pre>ping -c 4 &lt;host&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">経路確認</div><div class="tags"></div></div>
+<div class="code"><pre>tracepath &lt;host&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">TCPポート疎通</div><div class="tags"><span class="tag is">pkg: nmap-ncat</span></div></div>
+<div class="code"><pre>nc -vz &lt;host&gt; 443</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">HTTP(S)疎通・TLS確認</div><div class="tags"></div></div>
+<div class="code"><pre>curl -vk https://&lt;host&gt;/</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">DNS名前解決</div><div class="tags"><span class="tag is">pkg: bind-utils</span></div></div>
+<div class="code"><pre>dig &lt;fqdn&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">確立中のTCP接続</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>ss -antp state established</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">パケットキャプチャ(Wireshark解析用)</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: tcpdump</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>tcpdump -i ens3 -nn port 443 -w /tmp/cap.pcap</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">通信遮断の原因確認</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>firewall-cmd --list-all</pre></div></div>
+<h3 class="sub">4-6. ストレージ・ファイルシステム</h3>
+<div class="cmd"><div class="head"><div class="title">ディスク・FSエラー</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>dmesg -T | grep -i -E "i/o error|scsi|xfs"</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">パス障害の有無</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: device-mapper-multipath</span></div></div>
+<div class="code"><pre>multipath -ll</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">物理ディスクのSMART情報</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: smartmontools</span></div></div>
+<div class="code"><pre>smartctl -a /dev/sda</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">XFS整合性チェック(読取専用、アンマウント状態で実施)</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>xfs_repair -n /dev/vgdata/lvdata</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">読取専用化したFSの再マウント</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>mount -o remount,rw /</pre></div></div>
+<h3 class="sub">4-7. SELinux</h3>
+<div class="cmd"><div class="head"><div class="title">直近のSELinux拒否ログ</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>ausearch -m AVC -ts recent</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">拒否原因と対処案を表示</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: setroubleshoot-server</span></div></div>
+<div class="code"><pre>sealert -a /var/log/audit/audit.log</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">拒否理由の解説</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>ausearch -m AVC -ts recent | audit2why</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">一時的にPermissiveにして切り分け(必ず元に戻す)</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>setenforce 0</pre></div></div>
+<h3 class="sub">4-8. パッケージ・設定の整合性</h3>
+<div class="cmd"><div class="head"><div class="title">全パッケージのファイル改変確認</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>rpm -Va</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">特定パッケージの改変確認</div><div class="tags"></div></div>
+<div class="code"><pre>rpm -V &lt;package&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">障害直前のパッケージ変更内容</div><div class="tags"></div></div>
+<div class="code"><pre>dnf history info &lt;ID&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">パッケージ変更の取り消し</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>dnf history undo &lt;ID&gt;</pre></div></div>
+<h3 class="sub">4-9. ログイン・認証</h3>
+<div class="cmd"><div class="head"><div class="title">ログイン失敗履歴</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>lastb | head</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">アカウントロック状態</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>faillock --user &lt;user&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ロック解除</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>faillock --user &lt;user&gt; --reset</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">SSHログ</div><div class="tags"></div></div>
+<div class="code"><pre>journalctl -u sshd --since today</pre></div></div>
+<h3 class="sub">4-10. カーネルパニック・ハングアップ</h3>
+<div class="cmd"><div class="head"><div class="title">kdumpで取得したvmcore</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>ls /var/crash/</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">vmcore解析</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: crash kernel-debuginfo</span></div></div>
+<div class="code"><pre>crash /usr/lib/debug/lib/modules/$(uname -r)/vmlinux /var/crash/&lt;dir&gt;/vmcore</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">SysRqキーを有効化</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>sysctl -w kernel.sysrq=1</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ブロック中タスクのスタックをログ出力</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>echo w &gt; /proc/sysrq-trigger</pre></div></div>
+<h3 class="sub">4-11. 起動不可時</h3>
+<div class="cmd"><div class="head"><div class="title">レスキューモードで起動</div><div class="tags"><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>GRUBで "e" → linux行末尾に systemd.unit=rescue.target</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">initramfs段階で停止(rootパスワード再設定等)</div><div class="tags"><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>GRUBで "e" → linux行末尾に rd.break</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">次回起動時にSELinuxラベルを全再付与</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>touch /.autorelabel</pre></div></div>
+<h3 class="sub">4-12. ベンダー問い合わせ用</h3>
+<div class="cmd"><div class="head"><div class="title">Red Hatサポート提出用の一括情報採取</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>sos report --batch --case-id=&lt;CASE&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ホスト名・IP等を難読化して採取</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>sos report --batch --clean</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">Red Hat Insightsで既知の問題を診断</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: insights-client</span></div></div>
+<div class="code"><pre>insights-client --check-results</pre></div></div>
+</section>
+<!-- ================= 05 パッチ適用・アップデート ================= -->
+<section class="case" id="patch">
+<h2><span class="num">05</span>パッチ適用・アップデート</h2>
+<p class="lead">定期的なセキュリティパッチ適用で使うコマンドです。</p>
+<h3 class="sub">5-1. 適用前確認</h3>
+<div class="cmd"><div class="head"><div class="title">更新可能なパッケージ一覧</div><div class="tags"></div></div>
+<div class="code"><pre>dnf check-update</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">適用可能なセキュリティ修正(RHSA)</div><div class="tags"></div></div>
+<div class="code"><pre>dnf updateinfo list --security</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">アドバイザリの詳細</div><div class="tags"></div></div>
+<div class="code"><pre>dnf updateinfo info RHSA-&lt;ID&gt;</pre></div></div>
+<h3 class="sub">5-2. 適用</h3>
+<div class="cmd"><div class="head"><div class="title">セキュリティ修正のみ適用</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>dnf update --security -y</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">特定アドバイザリのみ適用</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>dnf upgrade --advisory=RHSA-&lt;ID&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">特定パッケージのバージョンを固定</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: python3-dnf-plugin-versionlock</span></div></div>
+<div class="code"><pre>dnf versionlock add &lt;package&gt;</pre></div></div>
+<h3 class="sub">5-3. 適用後確認</h3>
+<div class="cmd"><div class="head"><div class="title">OS再起動の要否</div><div class="tags"><span class="tag is">pkg: dnf-utils</span></div></div>
+<div class="code"><pre>needs-restarting -r</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">再起動が必要なサービス</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: dnf-utils</span></div></div>
+<div class="code"><pre>needs-restarting -s</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">次回起動カーネル</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>grubby --default-kernel</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">適用中のライブパッチ</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: kpatch</span></div></div>
+<div class="code"><pre>kpatch list</pre></div></div>
+</section>
+<!-- ================= 06 バックアップ・リストア ================= -->
+<section class="case" id="backup">
+<h2><span class="num">06</span>バックアップ・リストア</h2>
+<p class="lead">設定ファイルの退避やシステム全体のバックアップで使うコマンドです。</p>
+<h3 class="sub">6-1. ファイル・設定</h3>
+<div class="cmd"><div class="head"><div class="title">設定変更前の日付付き退避</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>cp -p /etc/ssh/sshd_config{,.$(date +%Y%m%d)}</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">SELinuxラベル・ACLを保持してアーカイブ</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>tar --xattrs --selinux --acls -czpf /backup/etc_$(date +%F).tar.gz /etc</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">属性保持で差分同期</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>rsync -aAXHv /data/ backup01:/backup/data/</pre></div></div>
+<h3 class="sub">6-2. システム全体・スナップショット</h3>
+<div class="cmd"><div class="head"><div class="title">LVMスナップショット作成</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>lvcreate -s -n lvdata_snap -L 5G /dev/vgdata/lvdata</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ReaR(Relax-and-Recover)で復旧用ISO+バックアップ作成</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: rear</span></div></div>
+<div class="code"><pre>dnf install -y rear &amp;&amp; rear -v mkbackup</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">XFSのフルダンプ</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: xfsdump</span></div></div>
+<div class="code"><pre>xfsdump -l 0 -f /backup/data.dump /data</pre></div></div>
+</section>
+<!-- ================= 07 停止・再起動・日常運用 ================= -->
+<section class="case" id="ops">
+<h2><span class="num">07</span>停止・再起動・日常運用</h2>
+<p class="lead">計画停止や日常点検で使うコマンドです。</p>
+<h3 class="sub">7-1. 停止・再起動</h3>
+<div class="cmd"><div class="head"><div class="title">予告付き再起動</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>shutdown -r +5 "メンテナンスのため5分後に再起動します"</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">予約した停止の取り消し</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>shutdown -c</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">即時再起動/停止</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="code"><pre>systemctl reboot / systemctl poweroff</pre></div></div>
+<h3 class="sub">7-2. 日常点検</h3>
+<div class="cmd"><div class="head"><div class="title">日次の簡易ヘルスチェック</div><div class="tags"></div></div>
+<div class="code"><pre>systemctl --failed; df -h; free -h; uptime</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">前日以降の警告以上のログ</div><div class="tags"></div></div>
+<div class="code"><pre>journalctl -p warning --since yesterday</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">ログローテーション設定の動作確認(ドライラン)</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>logrotate -d /etc/logrotate.conf</pre></div></div>
+</section>
+<!-- ================= 08 コンテナ(Podman) ================= -->
+<section class="case" id="container">
+<h2><span class="num">08</span>コンテナ(Podman)</h2>
+<p class="lead">RHEL 9 標準のコンテナエンジン Podman の確認・調査コマンドです。</p>
+<h3 class="sub">8-1. 状態確認・調査</h3>
+<div class="cmd"><div class="head"><div class="title">コンテナ一覧(停止中含む)</div><div class="tags"><span class="tag is">pkg: podman</span></div></div>
+<div class="code"><pre>podman ps -a</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">イメージ一覧</div><div class="tags"><span class="tag is">pkg: podman</span></div></div>
+<div class="code"><pre>podman images</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">コンテナログ</div><div class="tags"><span class="tag is">pkg: podman</span></div></div>
+<div class="code"><pre>podman logs -f &lt;container&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">コンテナ詳細設定</div><div class="tags"><span class="tag is">pkg: podman</span></div></div>
+<div class="code"><pre>podman inspect &lt;container&gt;</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">コンテナ別リソース使用量</div><div class="tags"><span class="tag is">pkg: podman</span></div></div>
+<div class="code"><pre>podman stats --no-stream</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">イメージ・ボリュームのディスク使用量</div><div class="tags"><span class="tag is">pkg: podman</span></div></div>
+<div class="code"><pre>podman system df</pre></div></div>
+<div class="cmd"><div class="head"><div class="title">Quadlet(systemd連携)で管理するコンテナの状態</div><div class="tags"><span class="tag is">pkg: podman</span></div></div>
+<div class="code"><pre>systemctl --user status &lt;quadlet-unit&gt;</pre></div></div>
+</section>
+
+<!-- ================= 付録 ================= -->
+<section class="case" id="evidence">
+<h2><span class="num">A</span>エビデンス一括取得スクリプト</h2>
+<p class="lead">「2. 構築完了後の構成情報の取得」の主要コマンドをまとめて実行し、結果をホスト単位で tar.gz に保存するスクリプト例です。構築完了時と変更作業の前後で取得し、diff で比較すると差分確認(テスト自動化)に利用できます。</p>
+<div class="cmd"><div class="head"><div class="title">一括取得スクリプト（例）</div><div class="tags"><span class="tag">bash</span></div></div>
+<div class="code"><pre>#!/bin/bash
+# RHEL 9 構成情報エビデンス一括取得スクリプト(root で実行)
+OUT=/var/tmp/evidence_$(hostname -s)_$(date +%Y%m%d_%H%M%S)
+mkdir -p &quot;$OUT&quot;
+run() { echo &quot;### $2&quot; &gt; &quot;$OUT/$1.txt&quot;; eval &quot;$2&quot; &gt;&gt; &quot;$OUT/$1.txt&quot; 2&gt;&amp;1; }
+run os        &quot;cat /etc/redhat-release; uname -a; hostnamectl&quot;
+run cpu_mem   &quot;lscpu; free -h; lsmem&quot;
+run hw        &quot;dmidecode -t system&quot;
+run storage   &quot;lsblk -f; df -hT; findmnt; cat /etc/fstab; pvs; vgs; lvs&quot;
+run network   &quot;ip -br addr; ip route; nmcli dev status; cat /etc/resolv.conf /etc/hosts; ss -tulnp&quot;
+run packages  &quot;rpm -qa --qf &#x27;%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}\n&#x27; | sort&quot;
+run services  &quot;systemctl list-unit-files --type=service --state=enabled; systemctl list-timers --all&quot;
+run security  &quot;firewall-cmd --list-all-zones; sestatus; update-crypto-policies --show; sshd -T&quot;
+run users     &quot;getent passwd; getent group; ls -l /etc/sudoers.d&quot;
+run kernel    &quot;cat /proc/cmdline; tuned-adm active; sysctl -a&quot;
+run time      &quot;timedatectl; chronyc sources; localectl&quot;
+tar czf &quot;$OUT.tar.gz&quot; -C &quot;$(dirname &quot;$OUT&quot;)&quot; &quot;$(basename &quot;$OUT&quot;)&quot;
+echo &quot;出力: $OUT.tar.gz&quot;</pre></div></div>
+</section>
+
+<section class="case" id="notes">
+<h2><span class="num">B</span>利用上の注意</h2>
+<div class="note"><ul style="margin:0;padding-left:20px"><li>IPアドレス・I/F名(ens3 等)・&lt;&gt; で囲んだ値は、環境に合わせて置き換えてください。</li><li>「注意」が付いたコマンドは、サービス停止・業務影響・データ変更を伴う可能性があります。本番環境では事前に検証環境で確認し、作業手順書に基づいて実施してください。</li><li>「pkg」が付いたコマンドは、最小インストール構成では未導入の場合があります。<code>dnf install</code> で導入してください。</li><li>RHEL 9 ではネットワーク設定は NetworkManager(keyfile 形式)が標準で、旧 network-scripts は廃止されています。abrt に代わり systemd-coredump(coredumpctl)を利用します。</li><li>前回起動時のログ(<code>journalctl -b -1</code>)を参照するには journal の永続化が必要です。</li></ul></div>
+<footer>
+  <p>掲載コマンドは一般的な仕様に基づくサンプルです。バージョンやエディションにより利用できない構文があります。本番環境で実行する前に、検証環境とRed Hatの公式マニュアルで確認してください。</p>
+  <p>最終更新：2026年11月</p>
+</footer>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function hlLine(line){
+    var cm='', code=line, m=line.match(/(^|\s)#(\s|!|$).*$/);
+    if(m && !/^\s*\$/.test(line)){ var idx=line.indexOf('#', m.index); code=line.slice(0,idx); cm=line.slice(idx); }
+    var strs=[]; code=code.replace(/"[^"]*"|'[^']*'/g,function(s){strs.push(s);return '\u0000'+(strs.length-1)+'\u0000';});
+    code=esc(code).replace(/(^|[;|&]\s*|\s(?:&&|\|\|)\s)([a-zA-Z_./][\w./-]*)/g,function(a,p,c){return p+'<span class="f">'+c+'</span>';})
+                  .replace(/(\s)(--?[a-zA-Z][\w-]*)/g,'$1<span class="k">$2</span>');
+    code=code.replace(/\u0000(\d+)\u0000/g,function(_,i){return '<span class="s">'+esc(strs[+i])+'</span>';});
+    return code+(cm?'<span class="c">'+esc(cm)+'</span>':'');
+  }
+  document.querySelectorAll('.code pre').forEach(function(pre){
+    var raw=pre.textContent; pre.dataset.raw=raw;
+    pre.innerHTML=raw.split('\n').map(hlLine).join('\n');
+    var b=document.createElement('button'); b.className='copy'; b.type='button'; b.textContent='コピー';
+    b.addEventListener('click', async function(){
+      try{ await navigator.clipboard.writeText(raw); b.textContent='コピーしました'; }
+      catch(e){ var r=document.createRange(); r.selectNodeContents(pre); var s=getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent='選択しました（Ctrl+C）'; }
+      setTimeout(function(){b.textContent='コピー';},1600);
+    });
+    pre.parentElement.appendChild(b);
+  });
+  var q=document.getElementById('q'), empty=document.getElementById('empty');
+  var cards=[].slice.call(document.querySelectorAll('.cmd'));
+  q.addEventListener('input', function(){
+    var v=q.value.trim().toLowerCase(), hit=0;
+    cards.forEach(function(c){ var ok=!v || c.textContent.toLowerCase().indexOf(v)>=0;
+      c.classList.toggle('hidden',!ok); if(ok) hit++; });
+    document.querySelectorAll('h3.sub').forEach(function(h){
+      var n=h.nextElementSibling, any=false;
+      while(n && !n.matches('h3.sub')){ if(n.matches('.cmd') && !n.classList.contains('hidden')) any=true; n=n.nextElementSibling; }
+      h.classList.toggle('hidden', !!v && !any);
+    });
+    document.querySelectorAll('section.case').forEach(function(s){
+      var has=s.querySelector('.cmd:not(.hidden)') || !v;
+      s.classList.toggle('hidden', !has);
+    });
+    document.querySelectorAll('.note').forEach(function(n){n.classList.toggle('hidden',!!v);});
+    empty.style.display=(v && hit===0)?'block':'none';
+  });
+})();
+</script>
+</body>
+</html>
