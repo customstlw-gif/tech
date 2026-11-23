@@ -85,6 +85,7 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);marg
 <nav class="toc" aria-label="目次">
   <a href="#build"><span class="n">01</span>構築時のコマンド</a><a href="#config"><span class="n">02</span>構築完了後の構成情報の取得</a><a href="#perf"><span class="n">03</span>性能情報の取得</a><a href="#trouble"><span class="n">04</span>障害時の調査</a>
   <a href="#backup"><span class="n">05</span>バックアップ・リストア</a><a href="#upgrade"><span class="n">06</span>アップグレード</a>
+  <a href="#tips"><span class="n">07</span>知っておくと便利なコマンド</a>
   <div class="grp">付録</div>
   <a href="#evidence"><span class="n">A</span>構成情報一括取得スクリプト</a>
   <a href="#notes"><span class="n">B</span>利用上の注意</a>
@@ -283,6 +284,86 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);marg
 <div class="code"><pre>gitlab-ctl diff-config</pre></div></div>
 </section>
 
+<!-- ================= 07 便利コマンド ================= -->
+<section class="case" id="tips">
+<h2><span class="num">07</span>知っておくと便利なコマンド <span class="tag" style="font-size:12px">追加</span></h2>
+<p class="lead">JSON ログの絞り込み、API や CLI による操作の自動化、データ整合性のチェックなど、知っていると運用の効率と品質が上がるコマンドです。</p>
+
+<h3 class="sub">7-1. ログを素早く絞り込む</h3>
+<div class="cmd"><div class="head"><div class="title">JSON ログを jq で絞り込み（エラーだけ・遅いリクエストだけ）</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: jq</span></div></div>
+<div class="desc">GitLab のログは JSON 形式なので、jq で条件を指定して抽出できます。</div>
+<div class="code"><pre># 500 系エラーのリクエスト
+jq -c 'select(.status &gt;= 500) | {time, method, path, status, duration_s}' \
+  /var/log/gitlab/gitlab-rails/production_json.log | tail -20
+
+# 5秒以上かかったリクエスト
+jq -c 'select(.duration_s &gt; 5) | {time, path, duration_s, user_id}' \
+  /var/log/gitlab/gitlab-rails/production_json.log | tail -20</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">相関 ID で1件のリクエストを全ログから追跡</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc">エラー画面やログに出る correlation_id で、Rails・Sidekiq・Gitaly のログを横断して検索できます。</div>
+<div class="code"><pre>grep -r "&lt;correlation_id&gt;" /var/log/gitlab/ | less</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">失敗した Sidekiq ジョブの集計</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: jq</span></div></div>
+<div class="code"><pre>jq -r 'select(.job_status == "fail") | .class' /var/log/gitlab/sidekiq/current | sort | uniq -c | sort -rn | head</pre></div></div>
+
+<h3 class="sub">7-2. API・CLI で自動化する</h3>
+<div class="cmd"><div class="head"><div class="title">REST API でプロジェクト一覧を取得</div><div class="tags"></div></div>
+<div class="desc">アクセストークン（read_api 権限）で利用できます。棚卸しや定期レポートに便利です。</div>
+<div class="code"><pre>curl -s --header "PRIVATE-TOKEN: &lt;アクセストークン&gt;" \
+  "https://gitlab.example.com/api/v4/projects?per_page=100&amp;simple=true" \
+  | jq -r '.[] | [.id, .path_with_namespace, .last_activity_at] | @tsv'</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">バージョンを API で確認（外部から）</div><div class="tags"></div></div>
+<div class="code"><pre>curl -s --header "PRIVATE-TOKEN: &lt;アクセストークン&gt;" https://gitlab.example.com/api/v4/version</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">glab CLI で MR・パイプラインを操作</div><div class="tags"><span class="tag is">pkg: glab</span></div></div>
+<div class="desc">GitLab 公式の CLI です。ブラウザを開かずに MR やパイプラインの状況を確認できます。</div>
+<div class="code"><pre>glab auth login --hostname gitlab.example.com
+glab mr list
+glab ci status
+glab ci lint                      # .gitlab-ci.yml の構文チェック
+glab api projects/:id/pipelines   # 任意の API を呼び出し</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">Rails ランナーで管理者ユーザーを棚卸し</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>gitlab-rails runner 'User.admins.each { |u| puts [u.username, u.email, u.last_sign_in_at].join("\t") }'</pre></div></div>
+
+<h3 class="sub">7-3. データ整合性のチェック</h3>
+<div class="cmd"><div class="head"><div class="title">添付ファイル・CI 成果物・LFS の整合性確認</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc">バックアップのリストア後や、ストレージ移行後に実行します。</div>
+<div class="code"><pre>gitlab-rake gitlab:uploads:check
+gitlab-rake gitlab:artifacts:check
+gitlab-rake gitlab:lfs:check</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">孤立した CI 成果物ファイルの確認（ドライラン）</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc">既定はドライランで、削除せずに対象だけを表示します。</div>
+<div class="code"><pre>gitlab-rake gitlab:cleanup:orphan_job_artifact_files
+# 実際に削除する場合（注意）
+# gitlab-rake gitlab:cleanup:orphan_job_artifact_files DRY_RUN=false</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">コンテナレジストリの不要データを削除</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="desc">削除中はレジストリが読み取り専用になります。メンテナンス時間に実行してください。</div>
+<div class="code"><pre>gitlab-ctl registry-garbage-collect -m</pre></div></div>
+
+<h3 class="sub">7-4. 運用の小技</h3>
+<div class="cmd"><div class="head"><div class="title">データベースへ直接接続（参照のみ）</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="desc">更新は行わず、調査目的の参照にとどめてください。</div>
+<div class="code"><pre>gitlab-rails dbconsole --database main
+# 例: SELECT count(*) FROM users WHERE state = 'active';</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ロックされたユーザーの解除</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="desc">ログイン失敗の繰り返しでロックされたユーザーを解除します。</div>
+<div class="code"><pre>gitlab-rails runner 'User.find_by_username("&lt;ユーザー名&gt;").unlock_access!'</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">Runner をデバッグモードで起動</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc">ジョブが取得されない・失敗する原因をログで詳しく確認できます。</div>
+<div class="code"><pre>gitlab-runner stop
+gitlab-runner --debug run</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">GitLab のバージョンをすばやく確認</div><div class="tags"></div></div>
+<div class="code"><pre>gitlab-rails runner "puts Gitlab::VERSION"</pre></div></div>
+
+</section>
 <!-- ================= 付録 ================= -->
 <section class="case" id="evidence">
 <h2><span class="num">A</span>構成情報一括取得スクリプト</h2>
