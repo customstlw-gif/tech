@@ -85,6 +85,7 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);marg
 <nav class="toc" aria-label="目次">
   <a href="#build"><span class="n">01</span>構築時のコマンド</a><a href="#config"><span class="n">02</span>構築完了後の構成情報の取得</a><a href="#perf"><span class="n">03</span>性能情報の取得</a><a href="#trouble"><span class="n">04</span>障害時の調査</a>
   <a href="#ops"><span class="n">05</span>計画停止・メンテナンス</a>
+  <a href="#tips"><span class="n">06</span>知っておくと便利なコマンド</a>
   <div class="grp">付録</div>
   <a href="#evidence"><span class="n">A</span>構成情報一括取得スクリプト</a>
   <a href="#notes"><span class="n">B</span>利用上の注意</a>
@@ -268,6 +269,79 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);marg
 <div class="code"><pre>clplogcmd -m "メンテナンス開始" --alert</pre></div></div>
 </section>
 
+<!-- ================= 06 便利コマンド ================= -->
+<section class="case" id="tips">
+<h2><span class="num">06</span>知っておくと便利なコマンド <span class="tag" style="font-size:12px">追加</span></h2>
+<p class="lead">切替試験の監視、構成変更前の差分確認、仮想マシンのバックアップ時の手順など、知っていると試験・保守の品質が上がるコマンドです。</p>
+
+<h3 class="sub">6-1. 試験・監視の効率化</h3>
+<div class="cmd"><div class="head"><div class="title">状態を定期的に記録しながら試験（切替試験の証跡）</div><div class="tags"><span class="tag au">root</span><span class="tag">bash</span></div></div>
+<div class="desc">切替の前後で状態がどう変わったかを時刻付きでファイルに残せます。</div>
+<div class="code"><pre>while true; do echo "=== $(date '+%F %T')"; clpstat --local; sleep 5; done \
+  | tee /var/tmp/clpstat_$(date +%Y%m%d_%H%M).log</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ハートビート・モニタの詳細だけを確認</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>clpstat --hb --detail
+clpstat --mon --detail | less</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">作業の開始・終了をアラートログに記録</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc">Cluster WebUI のアラートにも残るため、試験結果との突き合わせが簡単になります。</div>
+<div class="code"><pre>clplogcmd -m "切替試験 No.3 開始" --alert
+clplogcmd -m "切替試験 No.3 終了" --alert</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">NIC 障害を模擬（切替試験）</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="desc">試験環境でのみ実行してください。リモート接続している NIC を切断すると操作できなくなります。</div>
+<div class="code"><pre>nmcli device disconnect ens4     # 監視対象の NIC を切断
+nmcli device connect ens4        # 復旧</pre></div></div>
+
+<h3 class="sub">6-2. 構成変更を安全に行う</h3>
+<div class="cmd"><div class="head"><div class="title">反映前に、現在の構成情報との差分を確認</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc">新しい構成情報を配信する前に、変更点が意図した箇所だけかを確認します。</div>
+<div class="code"><pre>clpcfctrl --pull -x /tmp/clpconf_current
+diff -r /tmp/clpconf_current /tmp/clpconf_new</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">構成情報を Git で構成管理</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: git</span></div></div>
+<div class="desc">変更のたびに clp.conf をコミットしておくと、変更履歴とロールバック用の世代が残ります。</div>
+<div class="code"><pre>clpcfctrl --pull -x /opt/clp-config
+cd /opt/clp-config &amp;&amp; git add -A &amp;&amp; git commit -m "CLUSTERPRO 構成 $(date +%F)"</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">OS 起動時のクラスターサービス自動起動を無効化</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="desc">OS 単体の保守（カーネル更新・ディスク交換など）で、再起動後にクラスターへ参加させたくないときに使います。オプションはバージョンのマニュアルで確認してください。</div>
+<div class="code"><pre>clpsvcctrl.sh --disable core      # 自動起動を無効化
+clpsvcctrl.sh --enable core       # 元に戻す</pre></div></div>
+
+<h3 class="sub">6-3. バックアップ・リストア（仮想マシン・クラウド）</h3>
+<div class="cmd"><div class="head"><div class="title">イメージバックアップ前の準備と復帰</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="desc">クラスターの自動起動を止め、バックアップ中のフラグを立ててからシャットダウンします（このコマンドがシャットダウンまで行います）。リストアした環境が確認前にクラスターへ参加する事故を防げます。</div>
+<div class="code"><pre>clpbackup.sh --pre      # 準備してシャットダウン
+# ... スナップショット（AMI など）を取得し、起動 ...
+clpbackup.sh --post     # 通常状態に戻す</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ミラーディスクを切り離してから待機系をバックアップ</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="desc">待機系のイメージに「自分のデータは最新ではない」と記録された状態で保存されるため、リストア後に古いデータで業務が起動するのを防げます。</div>
+<div class="code"><pre>clpmonctrl -s -m &lt;ミラーディスク監視名&gt;     # 監視を一時停止
+clpmdctrl --break &lt;md名&gt;                    # 待機系で切り離し
+# ... バックアップ取得後 ...
+clpmonctrl -r -m &lt;ミラーディスク監視名&gt;
+clpmdstat --mirror &lt;md名&gt;                   # Normal に戻るまで確認</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">リストアした環境をクラスターに戻す</div><div class="tags"><span class="tag au">root</span><span class="tag adm">注意</span></div></div>
+<div class="desc">ホスト名・IP・デバイス名などを確認してから実行します。</div>
+<div class="code"><pre>clprestore.sh --post</pre></div></div>
+
+<h3 class="sub">6-4. 調査の小技</h3>
+<div class="cmd"><div class="head"><div class="title">自ノードだけのログを素早く採取</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc">他ノードと通信できない障害時でも、自ノードの情報は確実に取れます。</div>
+<div class="code"><pre>clplogcc -l -o /var/tmp/clplog_$(hostname -s)</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">モジュールログから時刻を絞って抽出</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc">切替が発生した時刻の前後だけを見ると、原因の特定が速くなります。</div>
+<div class="code"><pre>grep -h '2026/11/23 14:2' /opt/nec/clusterpro/log/*.log* | sort | less</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">クラスター関連サービスの状態を一覧</div><div class="tags"></div></div>
+<div class="code"><pre>systemctl list-units 'clusterpro*' --all</pre></div></div>
+
+</section>
 <!-- ================= 付録 ================= -->
 <section class="case" id="evidence">
 <h2><span class="num">A</span>構成情報一括取得スクリプト</h2>
