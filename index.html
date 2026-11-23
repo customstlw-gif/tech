@@ -1,6 +1,121 @@
 <!DOCTYPE html>
 <html lang="ja">
+<head><!DOCTYPE html>
+<html lang="ja">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tech Command Reference｜運用コマンド集</title>
+<meta name="description" content="Snowflake・PostgreSQL・Red Hat Enterprise Linux などの構築・構成確認・性能分析・障害調査で使うコマンドを、技術ごと・ケースごとに整理したリファレンス集">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f8fb; --panel:#ffffff; --ink:#1b2430; --muted:#5b6778; --line:#e2e7ee;
+  --accent:#1f6feb; --accent-soft:#e8f0fe;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0d131c; --panel:#141c27; --ink:#e4eaf2; --muted:#9aa7b8; --line:#243041; --accent:#5aa2ff; --accent-soft:#1a2a40; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP",system-ui,sans-serif;line-height:1.7;font-size:15px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header{background:var(--panel);border-bottom:1px solid var(--line)}
+header .wrap{padding-top:48px;padding-bottom:40px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:12.5px;color:var(--accent);letter-spacing:.08em}
+h1{font-size:30px;margin:8px 0 10px;letter-spacing:.01em}
+header p{color:var(--muted);margin:0;max-width:720px}
+h2{font-size:18px;margin:44px 0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.card{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;text-decoration:none;color:inherit;transition:border-color .15s, transform .15s}
+a.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.card .top{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.logo{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-weight:700;font-size:15px;color:#fff;flex-shrink:0}
+.card h3{margin:0;font-size:17px}
+.card .ver{font-size:12px;color:var(--muted)}
+.card p{color:var(--muted);font-size:13.5px;margin:4px 0 14px;flex:1}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.status{margin-left:auto;font-size:11.5px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.status.live{border-color:#7fd19b;color:#1d7a3d}
+@media (prefers-color-scheme: dark){.status.live{color:#8fdca6}}
+.card.soon{opacity:.62}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:13.5px}
+th,td{padding:10px 14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:var(--accent-soft);font-weight:700;white-space:nowrap}
+td.n{font-family:"JetBrains Mono",monospace;color:var(--accent);width:44px}
+footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);margin-top:56px;padding:20px 0 40px}
+footer a{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="eyebrow">TECH COMMAND REFERENCE</div>
+    <h1>運用コマンド集</h1>
+    <p>データ基盤・データベース・OS の構築、構成確認、性能分析、障害調査で使うコマンドを、技術ごと・ケースごとに整理したリファレンスです。各ページのコードはコピーしてそのまま利用できます。</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <h2>技術一覧</h2>
+  <div class="grid">
+    <a class="card" href="snowflake/">
+      <div class="top">
+        <div class="logo" style="background:#29b5e8">SF</div>
+        <div><h3>Snowflake</h3><div class="ver">クラウドデータプラットフォーム</div></div>
+        <span class="status live">公開中</span>
+      </div>
+      <p>ロール・ウェアハウス構築から、QUERY_HISTORY による性能分析、ロード／タスク障害の調査、Time Travel による復旧、CREATE OR ALTER や Git 連携による構築の自動化まで。</p>
+      <div class="chips"><span class="chip">構築</span><span class="chip">構成情報</span><span class="chip">性能</span><span class="chip">障害調査</span><span class="chip">権限監査</span><span class="chip">コスト</span><span class="chip">復旧</span><span class="chip">便利技</span></div>
+    </a>
+
+    <div class="card soon">
+      <div class="top">
+        <div class="logo" style="background:#336791">PG</div>
+        <div><h3>PostgreSQL</h3><div class="ver">リレーショナルデータベース</div></div>
+        <span class="status">準備中</span>
+      </div>
+      <p>initdb・ユーザー作成、pg_stat_statements による性能分析、ロック待ち調査、pg_dump / PITR によるバックアップと復旧。</p>
+      <div class="chips"><span class="chip">構築</span><span class="chip">性能</span><span class="chip">障害調査</span><span class="chip">バックアップ</span></div>
+    </div>
+
+    <div class="card soon">
+      <div class="top">
+        <div class="logo" style="background:#cc0000">RH</div>
+        <div><h3>Red Hat Enterprise Linux</h3><div class="ver">Linux OS</div></div>
+        <span class="status">準備中</span>
+      </div>
+      <p>OS 初期設定・dnf・firewalld・SELinux、sar / vmstat による性能確認、journalctl / dmesg による障害調査。</p>
+      <div class="chips"><span class="chip">構築</span><span class="chip">構成情報</span><span class="chip">性能</span><span class="chip">障害調査</span></div>
+    </div>
+  </div>
+
+  <h2>共通の章立て</h2>
+  <p style="color:var(--muted);margin-top:-6px">どの技術のページも、次の観点で同じ順番に整理しています。</p>
+  <table>
+    <thead><tr><th></th><th>ケース</th><th>内容</th></tr></thead>
+    <tbody>
+      <tr><td class="n">01</td><td>構築</td><td>初期構築・ユーザー／権限作成・基本設定</td></tr>
+      <tr><td class="n">02</td><td>構成情報の取得</td><td>設定値・オブジェクト一覧・定義の出力（設計書との突合）</td></tr>
+      <tr><td class="n">03</td><td>性能情報の取得</td><td>実行時間・リソース負荷・ボトルネックの切り分け</td></tr>
+      <tr><td class="n">04</td><td>障害時の調査</td><td>エラー・ログ・ロック・接続障害の確認と一次対応</td></tr>
+      <tr><td class="n">05</td><td>権限・セキュリティ監査</td><td>権限の棚卸し・ログイン履歴・アクセス履歴</td></tr>
+      <tr><td class="n">06</td><td>コスト・容量管理</td><td>リソース使用量・ストレージ容量の推移</td></tr>
+      <tr><td class="n">07</td><td>バックアップ・復旧</td><td>バックアップ取得・リストア・誤操作からの復旧</td></tr>
+    </tbody>
+  </table>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>掲載コマンドは一般的な仕様に基づくサンプルです。バージョンやエディションにより利用できない構文があります。本番環境で実行する前に、検証環境と各製品の公式ドキュメントで確認してください。</p>
+    <p>最終更新：2026年11月</p>
+  </div>
+</footer>
+</body>
+</html>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tech Command Reference｜運用コマンド集</title>
