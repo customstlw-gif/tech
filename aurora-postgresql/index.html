@@ -96,6 +96,7 @@ header.top a.back{color:var(--muted);text-decoration:none;font-size:13px;border:
   <a href="#cost"><span class="n">06</span>コスト・容量管理</a>
   <a href="#recovery"><span class="n">07</span>バックアップ・復旧</a>
   <a href="#monitor"><span class="n">08</span>定常運用・監視自動化</a>
+  <a href="#tips"><span class="n">09</span>知っておくと便利なコマンド</a>
   <div class="grp">付録</div>
   <a href="#views"><span class="n">A</span>主要ビュー・関数 早見表</a>
 </nav>
@@ -906,6 +907,128 @@ aws rds apply-pending-maintenance-action --resource-identifier $CLUSTER_ARN \
 aws rds wait db-cluster-available --db-cluster-identifier $CLUSTER_ID
 
 aws rds reboot-db-instance --db-instance-identifier $INSTANCE_ID   # pending-reboot の反映</pre></div></div>
+</section>
+<!-- ================= 09 便利コマンド ================= -->
+<section class="case" id="tips">
+<h2><span class="num">09</span>知っておくと便利なコマンド <span class="tag" style="font-size:12px">追加</span></h2>
+<p class="lead">psql を速く使う機能、構築スクリプトを冪等化（何度実行しても同じ結果に）する書き方、環境間の差分チェックなど、知っていると作業効率と品質が大きく変わるコマンドです。</p>
+
+<h3 class="sub">9-1. psql を速く使う</h3>
+<div class="cmd"><div class="head"><div class="title">結果の縦表示・定期実行・時間計測</div><div class="tags"><span class="tag">psql</span></div></div>
+<div class="desc"><code class="i">\x auto</code> は列が多いときだけ縦表示に、<code class="i">\watch</code> は直前の SQL を指定秒ごとに再実行します。</div>
+<div class="code"><pre>\x auto
+\timing on
+SELECT pid, state, wait_event, now() - query_start AS elapsed, left(query, 60)
+FROM pg_stat_activity WHERE state &lt;&gt; 'idle';
+\watch 5</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">既定値から変更されている設定だけを表示</div><div class="tags"><span class="tag">psql</span><span class="tag">PostgreSQL 15以降</span></div></div>
+<div class="code"><pre>\dconfig
+\dconfig *timeout*</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">結果を変数に入れて次の SQL で使う</div><div class="tags"><span class="tag">psql</span></div></div>
+<div class="desc"><code class="i">\gset</code> で結果を psql 変数に格納し、<code class="i">\if</code> で分岐できます。</div>
+<div class="code"><pre>SELECT pg_is_in_recovery() AS is_reader \gset
+\if :is_reader
+  \echo 'リーダーに接続しています（書き込み不可）'
+\endif</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">クライアント側へ CSV 出力</div><div class="tags"><span class="tag">psql</span></div></div>
+<div class="desc">サーバー側のファイルを使わないため、Aurora でも利用できます。</div>
+<div class="code"><pre>\copy (SELECT * FROM sample_schema.orders WHERE order_date &gt;= current_date - 7) TO 'orders_7d.csv' WITH (FORMAT csv, HEADER)</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">直前のエラーの詳細を表示</div><div class="tags"><span class="tag">psql</span></div></div>
+<div class="code"><pre>\errverbose</pre></div></div>
+
+<h3 class="sub">9-2. 構築スクリプトの冪等化・テンプレート化</h3>
+<div class="cmd"><div class="head"><div class="title">エラー時に止めて、全体を1トランザクションで実行</div><div class="tags"><span class="tag">psql</span></div></div>
+<div class="desc">途中で失敗したら全体がロールバックされるため、中途半端な状態が残りません。</div>
+<div class="code"><pre>psql -h $PG_HOST -U $PG_USER -d $PG_DB \
+     -v ON_ERROR_STOP=1 --single-transaction -f deploy.sql</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">環境名をパラメータ化</div><div class="tags"><span class="tag">psql</span></div></div>
+<div class="desc">psql 変数を使うと、同じ SQL を環境ごとに使い回せます。</div>
+<div class="code"><pre>psql ... -v env=stg -v app_schema=stg_app -f deploy.sql
+
+-- deploy.sql
+\echo 'deploy to' :env
+CREATE SCHEMA IF NOT EXISTS :"app_schema";
+COMMENT ON SCHEMA :"app_schema" IS :'env';</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">何度実行しても安全な DDL</div><div class="tags"><span class="tag is">SQL</span></div></div>
+<div class="desc">ロールには IF NOT EXISTS がないため、DO ブロックで存在確認します。</div>
+<div class="code"><pre>CREATE TABLE IF NOT EXISTS sample_schema.orders (order_id bigint PRIMARY KEY);
+ALTER TABLE sample_schema.orders ADD COLUMN IF NOT EXISTS note text;
+CREATE INDEX IF NOT EXISTS idx_orders_note ON sample_schema.orders (note);
+CREATE OR REPLACE VIEW sample_schema.v_orders AS SELECT * FROM sample_schema.orders;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'sample_ro') THEN
+    CREATE ROLE sample_ro NOLOGIN;
+  END IF;
+END $$;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">稼働中のテーブルに安全に DDL を流す</div><div class="tags"><span class="tag is">SQL</span><span class="tag adm">変更系</span></div></div>
+<div class="desc">ロック待ちが長引くと、後続の全クエリが詰まります。lock_timeout で一定時間待っても取れなければ諦めて、再実行します。</div>
+<div class="code"><pre>SET lock_timeout = '3s';
+ALTER TABLE sample_schema.orders ADD COLUMN IF NOT EXISTS status text;
+
+-- インデックスは CONCURRENTLY でロックを最小化（トランザクション外で実行）
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_orders_status ON sample_schema.orders (status);</pre></div></div>
+
+<h3 class="sub">9-3. 品質確認・テスト</h3>
+<div class="cmd"><div class="head"><div class="title">テーブル内容が一致するかを1行で確認（環境間・移行前後）</div><div class="tags"><span class="tag is">SQL</span></div></div>
+<div class="desc">件数とハッシュ値を両方の環境で比較します。</div>
+<div class="code"><pre>SELECT count(*), md5(string_agg(md5(t::text), '' ORDER BY order_id)) AS hash
+FROM sample_schema.orders t;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">差分のある行だけを抽出</div><div class="tags"><span class="tag is">SQL</span></div></div>
+<div class="code"><pre>(SELECT * FROM sample_schema.orders     EXCEPT SELECT * FROM sample_schema.orders_old)
+UNION ALL
+(SELECT * FROM sample_schema.orders_old EXCEPT SELECT * FROM sample_schema.orders);</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">環境間のスキーマ定義の差分</div><div class="tags"><span class="tag">pg_dump</span></div></div>
+<div class="code"><pre>diff &lt;(pg_dump -s -h $PG_HOST_STG -U $PG_USER $PG_DB) \
+     &lt;(pg_dump -s -h $PG_HOST_PRD -U $PG_USER $PG_DB)</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">テスト用の大量データを生成</div><div class="tags"><span class="tag is">SQL</span></div></div>
+<div class="code"><pre>INSERT INTO sample_schema.orders (order_id, order_date, amount)
+SELECT g, current_date - (g % 365), round((random() * 10000)::numeric, 0)
+FROM generate_series(1, 1000000) AS g;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">更新系 SQL の実行計画を、データを変えずに確認</div><div class="tags"><span class="tag is">SQL</span></div></div>
+<div class="desc">EXPLAIN ANALYZE は実際に実行されるため、トランザクション内で実行してロールバックします。</div>
+<div class="code"><pre>BEGIN;
+EXPLAIN (ANALYZE, BUFFERS) UPDATE sample_schema.orders SET amount = amount * 1.1 WHERE order_date &lt; '2026-01-01';
+ROLLBACK;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">サンプリングで大きいテーブルを素早く確認</div><div class="tags"><span class="tag is">SQL</span></div></div>
+<div class="code"><pre>SELECT * FROM sample_schema.orders TABLESAMPLE SYSTEM (1) LIMIT 100;   -- 約1%のブロックから抽出</pre></div></div>
+
+<h3 class="sub">9-4. 運用の小技</h3>
+<div class="cmd"><div class="head"><div class="title">いま接続しているのはライターか、リーダーか</div><div class="tags"><span class="tag is">SQL</span></div></div>
+<div class="code"><pre>SELECT pg_is_in_recovery() AS is_reader, inet_server_addr() AS server_ip, aurora_version();</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">レプリカの状態と遅延を確認（Aurora 固有関数）</div><div class="tags"><span class="tag is">SQL</span></div></div>
+<div class="code"><pre>SELECT server_id, session_id, replica_lag_in_msec, last_update_timestamp
+FROM aurora_replica_status();</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">接続にアプリ名を付ける（調査が楽になる）</div><div class="tags"><span class="tag is">SQL</span></div></div>
+<div class="desc">pg_stat_activity の application_name に表示されるため、どのアプリ・作業の接続かがすぐに分かります。</div>
+<div class="code"><pre>SET application_name = 'ops_maintenance_20261123';
+-- 接続文字列でも指定可能: psql "host=$PG_HOST dbname=$PG_DB application_name=batch01"</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">パスワードを平文でログに残さずに変更</div><div class="tags"><span class="tag">psql</span><span class="tag adm">変更系</span></div></div>
+<div class="desc">ALTER ROLE ... PASSWORD で直接指定すると、ログや履歴に残ることがあります。</div>
+<div class="code"><pre>\password sample_user</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">AWS CLI の出力を見やすく・ページャを止める</div><div class="tags"><span class="tag au">AWS CLI</span></div></div>
+<div class="desc">スクリプトから実行するときにページャで止まるのを防ぎ、必要な項目だけを表形式で表示します。</div>
+<div class="code"><pre>export AWS_PAGER=""
+aws rds describe-db-clusters \
+  --query 'DBClusters[].{id:DBClusterIdentifier,ver:EngineVersion,status:Status,writer:DBClusterMembers[?IsClusterWriter].DBInstanceIdentifier|[0]}' \
+  --output table</pre></div></div>
+
 </section>
 <section class="case" id="views">
 <h2><span class="num">A</span>主要ビュー・関数 早見表</h2>
