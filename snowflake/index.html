@@ -83,15 +83,18 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);marg
 
 <div class="layout">
 <nav class="toc" aria-label="目次">
+  <div class="grp">基本ケース</div>
   <a href="#build"><span class="n">01</span>構築時のコマンド</a>
   <a href="#config"><span class="n">02</span>構成情報の取得</a>
   <a href="#perf"><span class="n">03</span>性能情報の取得</a>
   <a href="#incident"><span class="n">04</span>障害時の調査</a>
+  <div class="grp">追加ケース</div>
   <a href="#security"><span class="n">05</span>権限・セキュリティ監査</a>
   <a href="#cost"><span class="n">06</span>コスト・ストレージ管理</a>
   <a href="#recovery"><span class="n">07</span>データ保護・復旧</a>
   <a href="#monitor"><span class="n">08</span>定常運用・監視自動化</a>
   <a href="#cli"><span class="n">09</span>Snowflake CLI</a>
+  <a href="#tips"><span class="n">10</span>知っておくと便利なコマンド</a>
   <div class="grp">付録</div>
   <a href="#views"><span class="n">A</span>主要ビュー早見表</a>
 </nav>
@@ -1048,6 +1051,243 @@ snow sql -f ./ddl/03_databases.sql -c prd -D "ENV=PRD"</pre></div></div>
 snow object describe table SAMPLE_DB.SAMPLE_SCHEMA.ORDERS -c dev
 snow stage copy ./data/orders.csv @SAMPLE_DB.SAMPLE_SCHEMA.STG_INTERNAL -c dev
 snow stage list-files @SAMPLE_DB.SAMPLE_SCHEMA.STG_INTERNAL -c dev</pre></div></div>
+</section>
+
+<!-- ================= 10 便利コマンド ================= -->
+<section class="case" id="tips">
+<h2><span class="num">10</span>知っておくと便利なコマンド <span class="tag" style="font-size:12px">追加</span></h2>
+<p class="lead">日々の作業を短くする構文、構築スクリプトを冪等化（何度実行しても同じ結果に）してテンプレート化する仕組み、環境間の差分チェックなど、知っていると作業効率と品質が大きく変わるコマンドです。</p>
+
+<h3 class="sub">10-1. SQL を短く書く構文</h3>
+<div class="cmd"><div class="head"><div class="title">パイプ演算子（->>）で SHOW の結果を直接加工</div><div class="tags"><span class="tag">2025年〜</span></div></div>
+<div class="desc">RESULT_SCAN(LAST_QUERY_ID()) を書かずに、前の文の結果を <code class="i">$1</code> で参照できます。2つ前の結果は <code class="i">$2</code> です。</div>
+<div class="code"><pre>SHOW WAREHOUSES
+  -&gt;&gt; SELECT "name", "size", "state", "auto_suspend"
+      FROM $1
+      WHERE "auto_suspend" IS NULL OR "auto_suspend" &gt; 600;   -- 自動停止が無効・長すぎるWH
+
+-- 複数の SHOW をまとめて1つの結果に
+SHOW USERS
+  -&gt;&gt; SHOW ROLES
+  -&gt;&gt; SELECT 'USER' AS KIND, "name" FROM $2
+      UNION ALL
+      SELECT 'ROLE', "name" FROM $1;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">SELECT * の除外・置換・列名パターン指定</div><div class="tags"><span class="tag">EXCLUDE / REPLACE / ILIKE</span></div></div>
+<div class="code"><pre>SELECT * EXCLUDE (CREATED_AT, UPDATED_AT) FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS;     -- 指定列以外
+SELECT * RENAME (AMOUNT AS AMOUNT_JPY)   FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS;     -- 列名だけ変更
+SELECT * REPLACE (ROUND(AMOUNT) AS AMOUNT) FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS;   -- 値だけ加工
+SELECT * ILIKE '%_ID'                    FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS;     -- 列名パターン</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">QUALIFY で重複排除・最新行の抽出</div><div class="tags"><span class="tag">ウィンドウ関数</span></div></div>
+<div class="desc">サブクエリなしで、ウィンドウ関数の結果で行を絞り込めます。</div>
+<div class="code"><pre>-- 顧客ごとの最新注文だけを取得
+SELECT *
+FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS
+QUALIFY ROW_NUMBER() OVER (PARTITION BY CUSTOMER_ID ORDER BY ORDER_DATE DESC) = 1;
+
+-- 重複キーの検出
+SELECT ORDER_ID, COUNT(*) OVER (PARTITION BY ORDER_ID) AS DUP_CNT, *
+FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS
+QUALIFY DUP_CNT &gt; 1;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">GROUP BY ALL / UNION ALL BY NAME</div><div class="tags"><span class="tag">集計・結合</span></div></div>
+<div class="code"><pre>-- 集計関数以外の列を自動で GROUP BY に含める
+SELECT ORDER_DATE, CUSTOMER_ID, SUM(AMOUNT) AS TOTAL
+FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS
+GROUP BY ALL;
+
+-- 列の順番ではなく列名で UNION（列順が違うテーブル同士でも安全）
+SELECT ORDER_ID, AMOUNT FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS_2025
+UNION ALL BY NAME
+SELECT AMOUNT, ORDER_ID FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS_2026;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">過去のクエリ結果を再利用（再実行不要）</div><div class="tags"><span class="tag">RESULT_SCAN</span></div></div>
+<div class="desc">クエリ結果は24時間保持されます。重いクエリを再実行せずに、結果を後から加工できます（ウェアハウス費用もかかりません）。</div>
+<div class="code"><pre>SELECT * FROM TABLE(RESULT_SCAN(LAST_QUERY_ID(-2)));        -- 2つ前のクエリ結果
+SELECT * FROM TABLE(RESULT_SCAN('&lt;QUERY_ID&gt;')) WHERE ...;  -- クエリIDを指定</pre></div></div>
+
+<h3 class="sub">10-2. 構築スクリプトの冪等化・テンプレート化</h3>
+<div class="cmd"><div class="head"><div class="title">セッション変数＋IDENTIFIER() で環境名をパラメータ化</div><div class="tags"><span class="tag">テンプレート化</span></div></div>
+<div class="desc">同じスクリプトを DEV / STG / PRD で使い回せます。オブジェクト名は IDENTIFIER() で変数から組み立てます。</div>
+<div class="code"><pre>SET ENV = 'DEV';
+SET DB_NAME = $ENV || '_SAMPLE_DB';
+SET WH_NAME = $ENV || '_SAMPLE_WH';
+
+CREATE DATABASE IF NOT EXISTS IDENTIFIER($DB_NAME);
+CREATE WAREHOUSE IF NOT EXISTS IDENTIFIER($WH_NAME) WAREHOUSE_SIZE = 'XSMALL' AUTO_SUSPEND = 60;
+USE DATABASE IDENTIFIER($DB_NAME);
+
+SHOW VARIABLES;   -- 設定済みの変数を確認</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">CREATE OR ALTER（宣言的・何度実行しても安全）</div><div class="tags"><span class="tag">2026年7月 GA</span></div></div>
+<div class="desc">「あるべき定義」を書くと、存在しなければ作成、存在すれば差分だけを変更します。CREATE OR REPLACE と違い、<b>データ・権限が保持</b>されます。テーブル・スキーマ・ビュー・タスク・ステージなど24種類で正式サポート。</div>
+<div class="code"><pre>CREATE OR ALTER TABLE SAMPLE_DB.SAMPLE_SCHEMA.ORDERS (
+  ORDER_ID     NUMBER(38,0) NOT NULL,
+  CUSTOMER_ID  NUMBER(38,0),
+  ORDER_DATE   DATE,
+  AMOUNT       NUMBER(18,2),
+  STATUS       VARCHAR(20)          -- ← 列を追加したい時は定義に書き足して再実行するだけ
+);</pre></div></div>
+<div class="note"><b>注意：</b>定義から消した列は<b>削除されます</b>（Time Travel 期間内なら復旧可）。また CREATE OR ALTER TABLE は原子性が保証されないため、失敗時は同じ文を再実行して収束させます。</div>
+
+<div class="cmd"><div class="head"><div class="title">CREATE OR REPLACE で権限を失わない（COPY GRANTS）</div><div class="tags"><span class="tag">よくある事故</span></div></div>
+<div class="desc">CREATE OR REPLACE で作り直すと、それまでの GRANT が消えます。ビューやテーブルの再作成時は COPY GRANTS を付けます。</div>
+<div class="code"><pre>CREATE OR REPLACE VIEW SAMPLE_DB.SAMPLE_SCHEMA.V_ORDERS
+  COPY GRANTS
+AS SELECT ORDER_ID, ORDER_DATE, AMOUNT FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS;
+
+-- 既存テーブルと同じ構造の空テーブル / 権限ごとクローン
+CREATE TABLE SAMPLE_DB.WORK.ORDERS_EMPTY LIKE SAMPLE_DB.SAMPLE_SCHEMA.ORDERS;
+CREATE TABLE SAMPLE_DB.WORK.ORDERS_COPY  CLONE SAMPLE_DB.SAMPLE_SCHEMA.ORDERS COPY GRANTS;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ステージ上の SQL ファイルを実行（Jinja テンプレート対応）</div><div class="tags"><span class="tag">EXECUTE IMMEDIATE FROM</span></div></div>
+<div class="desc">ファイル先頭に <code class="i">--!jinja</code> を書くか USING 句で変数を渡すと、Jinja2 テンプレートとして展開してから実行されます。ループや条件分岐で環境ごとの差分を吸収できます。</div>
+<div class="code"><pre>-- ▼ ステージ上のファイル（@SAMPLE_DB.DEPLOY.STG_SQL/setup.sql）の例
+--!jinja
+CREATE SCHEMA IF NOT EXISTS {{ env }}_SAMPLE_DB.RAW;
+{% for t in ['ORDERS', 'CUSTOMERS', 'ITEMS'] %}
+CREATE OR ALTER TABLE {{ env }}_SAMPLE_DB.RAW.{{ t }} (ID NUMBER, PAYLOAD VARIANT);
+{% endfor %}
+
+-- ▼ 実行（環境名を変数で渡す）
+EXECUTE IMMEDIATE FROM @SAMPLE_DB.DEPLOY.STG_SQL/setup.sql
+  USING (env =&gt; 'DEV');</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">GitHub リポジトリと連携して SQL を直接実行</div><div class="tags"><span class="tag adm">ACCOUNTADMIN 等</span></div></div>
+<div class="desc">GitHub 上の構築スクリプトを Snowflake から直接参照・実行できます。公開リポジトリなら認証情報（シークレット）は不要です。</div>
+<div class="code"><pre>-- 1. Git 連携用の API 統合（公開リポジトリの例）
+CREATE API INTEGRATION IF NOT EXISTS SAMPLE_GIT_API
+  API_PROVIDER = git_https_api
+  API_ALLOWED_PREFIXES = ('https://github.com/&lt;組織名またはユーザー名&gt;')
+  ENABLED = TRUE;
+
+-- 2. リポジトリのクローンを作成
+CREATE GIT REPOSITORY IF NOT EXISTS SAMPLE_DB.DEPLOY.SAMPLE_REPO
+  API_INTEGRATION = SAMPLE_GIT_API
+  ORIGIN = 'https://github.com/&lt;組織名&gt;/&lt;リポジトリ名&gt;.git';
+
+-- 3. 最新を取得して、ファイル一覧・実行
+ALTER GIT REPOSITORY SAMPLE_DB.DEPLOY.SAMPLE_REPO FETCH;
+SHOW GIT BRANCHES IN SAMPLE_DB.DEPLOY.SAMPLE_REPO;
+LS @SAMPLE_DB.DEPLOY.SAMPLE_REPO/branches/main/;
+EXECUTE IMMEDIATE FROM @SAMPLE_DB.DEPLOY.SAMPLE_REPO/branches/main/ddl/01_roles.sql;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">Snowflake Scripting で一括変更（ループ処理）</div><div class="tags"><span class="tag">EXECUTE IMMEDIATE</span></div></div>
+<div class="desc">複数オブジェクトへの同じ変更を1回で実行します。例：WORK スキーマの全テーブルの Time Travel を0日にする。</div>
+<div class="code"><pre>EXECUTE IMMEDIATE $$
+DECLARE
+  c CURSOR FOR
+    SELECT TABLE_SCHEMA, TABLE_NAME
+    FROM SAMPLE_DB.INFORMATION_SCHEMA.TABLES
+    WHERE TABLE_SCHEMA = 'WORK' AND TABLE_TYPE = 'BASE TABLE';
+  cnt INTEGER DEFAULT 0;
+BEGIN
+  FOR r IN c DO
+    EXECUTE IMMEDIATE 'ALTER TABLE SAMPLE_DB.' || r.TABLE_SCHEMA || '.' || r.TABLE_NAME
+                   || ' SET DATA_RETENTION_TIME_IN_DAYS = 0';
+    cnt := cnt + 1;
+  END FOR;
+  RETURN cnt || ' tables updated';
+END;
+$$;</pre></div></div>
+
+<h3 class="sub">10-3. 品質確認・テスト</h3>
+<div class="cmd"><div class="head"><div class="title">テーブル内容が一致するかを1行で確認（環境間・移行前後）</div><div class="tags"><span class="tag">HASH_AGG</span></div></div>
+<div class="desc">全行・全列のハッシュを比較します。行順に依存しないので、移行前後や DEV / PRD の突合に便利です。</div>
+<div class="code"><pre>SELECT
+  (SELECT HASH_AGG(*) FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS)    AS SRC_HASH,
+  (SELECT HASH_AGG(*) FROM SAMPLE_DB.WORK.ORDERS_MIGRATED)    AS DST_HASH,
+  SRC_HASH = DST_HASH AS IS_SAME;
+
+-- 差分行の特定（片方にしかない行）
+SELECT * FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS
+MINUS
+SELECT * FROM SAMPLE_DB.WORK.ORDERS_MIGRATED;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">テスト用の大量データを生成</div><div class="tags"><span class="tag">GENERATOR</span></div></div>
+<div class="desc">性能テストや負荷検証用に、任意件数のダミーデータを作成します。</div>
+<div class="code"><pre>CREATE OR REPLACE TRANSIENT TABLE SAMPLE_DB.WORK.ORDERS_TEST AS
+SELECT
+  SEQ8()                                                   AS ORDER_ID,
+  UNIFORM(1, 100000, RANDOM())                             AS CUSTOMER_ID,
+  DATEADD(DAY, -UNIFORM(0, 730, RANDOM()), CURRENT_DATE()) AS ORDER_DATE,
+  UNIFORM(100, 100000, RANDOM())::NUMBER(18,2)             AS AMOUNT
+FROM TABLE(GENERATOR(ROWCOUNT =&gt; 10000000));   -- 1,000万行</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">サンプリング・実行計画の確認</div><div class="tags"><span class="tag">SAMPLE / EXPLAIN</span></div></div>
+<div class="code"><pre>SELECT * FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS SAMPLE (1);        -- 約1%の行
+SELECT * FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS SAMPLE (1000 ROWS); -- 1000行
+
+-- 実行せずに計画だけ確認（スキャン対象パーティション数の見積もり）
+EXPLAIN USING TEXT
+SELECT * FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS WHERE ORDER_DATE = '2026-11-01';</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ファイルから列定義を自動推定してテーブル作成</div><div class="tags"><span class="tag">INFER_SCHEMA</span></div></div>
+<div class="desc">Parquet / CSV / JSON などのファイルから列名と型を読み取り、そのままテーブルを作成します。CSV の場合はファイル形式に <code class="i">PARSE_HEADER = TRUE</code> が必要です。</div>
+<div class="code"><pre>SELECT * FROM TABLE(INFER_SCHEMA(
+  LOCATION    =&gt; '@SAMPLE_DB.SAMPLE_SCHEMA.STG_LANDING/orders/',
+  FILE_FORMAT =&gt; 'SAMPLE_DB.SAMPLE_SCHEMA.FF_PARQUET'));
+
+CREATE TABLE SAMPLE_DB.RAW.ORDERS_AUTO
+  USING TEMPLATE (
+    SELECT ARRAY_AGG(OBJECT_CONSTRUCT(*))
+    FROM TABLE(INFER_SCHEMA(
+      LOCATION    =&gt; '@SAMPLE_DB.SAMPLE_SCHEMA.STG_LANDING/orders/',
+      FILE_FORMAT =&gt; 'SAMPLE_DB.SAMPLE_SCHEMA.FF_PARQUET')));</pre></div></div>
+
+<h3 class="sub">10-4. 運用の小技</h3>
+<div class="cmd"><div class="head"><div class="title">自分の接続元 IP を確認（ネットワークポリシー設定前に必須）</div><div class="tags"><span class="tag">締め出し防止</span></div></div>
+<div class="desc">アカウントにネットワークポリシーを適用する前に、自分の IP が許可リストに入っているか確認します。</div>
+<div class="code"><pre>SELECT CURRENT_IP_ADDRESS();</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ロールの確認・複数ロールの同時利用</div><div class="tags"><span class="tag">セカンダリロール</span></div></div>
+<div class="code"><pre>SELECT CURRENT_ROLE(), CURRENT_SECONDARY_ROLES();
+SELECT CURRENT_AVAILABLE_ROLES();            -- 自分が使えるロールの一覧
+SELECT IS_ROLE_IN_SESSION('SAMPLE_DB_RO');   -- 継承も含めて有効か
+
+USE SECONDARY ROLES ALL;    -- 付与された全ロールの権限を同時に使う（参照系の調査に便利）
+USE SECONDARY ROLES NONE;   -- 元に戻す</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">タイムゾーンを日本時間に（ACCOUNT_USAGE の時刻確認）</div><div class="tags"><span class="tag">見落としがち</span></div></div>
+<div class="desc">既定のタイムゾーンは America/Los_Angeles です。調査時に時刻がずれて見える原因の多くはこれです。</div>
+<div class="code"><pre>ALTER SESSION SET TIMEZONE = 'Asia/Tokyo';    -- セッション単位
+ALTER USER TARO_YAMADA SET TIMEZONE = 'Asia/Tokyo';   -- ユーザーの既定
+-- ALTER ACCOUNT SET TIMEZONE = 'Asia/Tokyo';  -- アカウント全体（影響範囲に注意）
+
+SHOW PARAMETERS LIKE 'TIMEZONE' IN SESSION;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">タグで部門別にコストを配賦</div><div class="tags"><span class="tag">Enterprise 以上</span></div></div>
+<div class="code"><pre>CREATE TAG IF NOT EXISTS SAMPLE_DB.GOVERNANCE.COST_CENTER
+  ALLOWED_VALUES 'SALES', 'MARKETING', 'DATA_PLATFORM';
+ALTER WAREHOUSE SAMPLE_WH SET TAG SAMPLE_DB.GOVERNANCE.COST_CENTER = 'SALES';
+
+-- タグ別の月間クレジット
+SELECT t.TAG_VALUE AS COST_CENTER,
+       ROUND(SUM(m.CREDITS_USED), 2) AS CREDITS
+FROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY m
+JOIN SNOWFLAKE.ACCOUNT_USAGE.TAG_REFERENCES t
+  ON t.OBJECT_NAME = m.WAREHOUSE_NAME
+ AND t.DOMAIN = 'WAREHOUSE'
+ AND t.TAG_NAME = 'COST_CENTER'
+WHERE m.START_TIME &gt;= DATE_TRUNC('MONTH', CURRENT_DATE())
+GROUP BY 1 ORDER BY 2 DESC;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">クエリ結果をファイルに出力（アンロード）</div><div class="tags"><span class="tag">COPY INTO @stage</span></div></div>
+<div class="code"><pre>COPY INTO @SAMPLE_DB.SAMPLE_SCHEMA.STG_LANDING/export/orders_20261122.csv
+FROM (SELECT * FROM SAMPLE_DB.SAMPLE_SCHEMA.ORDERS WHERE ORDER_DATE &gt;= '2026-11-01')
+FILE_FORMAT = (TYPE = CSV COMPRESSION = NONE FIELD_OPTIONALLY_ENCLOSED_BY = '"')
+HEADER = TRUE
+SINGLE = TRUE
+OVERWRITE = TRUE
+MAX_FILE_SIZE = 5368709120;   -- 5GB（SINGLE 時の上限を拡張）</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">SHOW を速く・絞って実行</div><div class="tags"><span class="tag">TERSE / STARTS WITH / LIMIT</span></div></div>
+<div class="desc">オブジェクトが多い環境では、必要な列・件数だけ取得すると高速です。HISTORY を付けると削除済みも表示されます。</div>
+<div class="code"><pre>SHOW TERSE TABLES IN DATABASE SAMPLE_DB;                     -- 基本列だけ
+SHOW TABLES IN DATABASE SAMPLE_DB STARTS WITH 'ORD' LIMIT 10;
+SHOW TABLES HISTORY IN SCHEMA SAMPLE_DB.SAMPLE_SCHEMA;        -- 削除済み（UNDROP 可能）も表示
+SHOW OBJECTS IN SCHEMA SAMPLE_DB.SAMPLE_SCHEMA;               -- テーブル・ビューをまとめて</pre></div></div>
 </section>
 
 <!-- ================= 付録 ================= -->
