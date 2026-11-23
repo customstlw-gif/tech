@@ -85,6 +85,7 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);marg
 <nav class="toc" aria-label="目次">
   <a href="#build"><span class="n">01</span>構築時のコマンド</a><a href="#config"><span class="n">02</span>構築完了後の構成情報の取得</a><a href="#perf"><span class="n">03</span>性能情報の取得</a><a href="#trouble"><span class="n">04</span>障害時の調査</a>
   <a href="#ops"><span class="n">05</span>日常運用・メンテナンス</a>
+  <a href="#tips"><span class="n">06</span>知っておくと便利なコマンド</a>
   <div class="grp">付録</div>
   <a href="#evidence"><span class="n">A</span>構成情報一括取得スクリプト</a>
   <a href="#notes"><span class="n">B</span>利用上の注意</a>
@@ -265,6 +266,89 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);marg
 <div class="code"><pre>utligen -f /backup/hulft_all_$(date +%F).prm -i snd -id "*" -i rcv -id "*" -i hst -id "*" -i job -id "*"</pre></div></div>
 </section>
 
+<!-- ================= 06 便利コマンド ================= -->
+<section class="case" id="tips">
+<h2><span class="num">06</span>知っておくと便利なコマンド <span class="tag" style="font-size:12px">追加</span></h2>
+<p class="lead">転送データの検証、ジョブからの安全な呼び出し、環境間の管理情報の比較など、HULFT のコマンドと OS コマンドを組み合わせて使うと便利な手順です。</p>
+
+<h3 class="sub">6-1. 転送データの検証</h3>
+<div class="cmd"><div class="head"><div class="title">送受信ファイルの一致確認（チェックサム）</div><div class="tags"></div></div>
+<div class="desc">送信側と受信側で同じ値になれば、内容が一致しています。コード変換なし（バイナリ転送）の場合に使えます。</div>
+<div class="code"><pre>sha256sum /data/send/SAMPLE.dat        # 送信側
+sha256sum /data/recv/SAMPLE.dat        # 受信側</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">件数（レコード数）とサイズの確認</div><div class="tags"></div></div>
+<div class="desc">テキスト転送でコード変換・改行変換がある場合は、チェックサムではなく件数で突き合わせます。</div>
+<div class="code"><pre>wc -l /data/recv/SAMPLE.dat
+ls -l --time-style=full-iso /data/recv/SAMPLE.dat</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">文字コード・改行コードの確認</div><div class="tags"></div></div>
+<div class="desc">文字化けや「1行に連結された」などのトラブル時に確認します。<code class="i">^M</code>（\r）が見えれば CRLF です。</div>
+<div class="code"><pre>file -i /data/recv/SAMPLE.dat
+head -3 /data/recv/SAMPLE.dat | od -c | head
+nkf --guess /data/recv/SAMPLE.dat       # nkf 導入時</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">転送前に、ファイルが書き込み中でないか確認</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc">他のプロセスが書き込み中のファイルを送ると、途中までのデータが届きます。</div>
+<div class="code"><pre>lsof /data/send/SAMPLE.dat || echo "使用中のプロセスなし"
+fuser -v /data/send/SAMPLE.dat</pre></div></div>
+
+<h3 class="sub">6-2. ジョブ・スクリプトからの呼び出し</h3>
+<div class="cmd"><div class="head"><div class="title">同期転送の結果で処理を分岐</div><div class="tags"><span class="tag">bash</span></div></div>
+<div class="desc"><code class="i">-sync</code> 指定で転送完了まで待ち、終了コードで成否を判定します。ジョブ管理製品から呼び出すときの基本形です。</div>
+<div class="code"><pre>utlsend -f SAMPLE01 -h recvhost -sync
+rc=$?
+if [ $rc -ne 0 ]; then
+  echo "$(date '+%F %T') utlsend NG rc=$rc" &gt;&gt; /var/tmp/hulft_job.log
+  utllist -s -f SAMPLE01 -h recvhost | tail -5 &gt;&gt; /var/tmp/hulft_job.log
+  exit $rc
+fi</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">cron・ジョブから実行するときの環境変数</div><div class="tags"><span class="tag">bash</span></div></div>
+<div class="desc">cron は環境変数を引き継がないため、HULEXEP・HULPATH を明示しないとコマンドが見つからない／設定ファイルを読めない状態になります。</div>
+<div class="code"><pre>#!/bin/bash
+export HULEXEP=/usr/local/HULFT/bin
+export HULPATH=/usr/local/HULFT/etc
+export PATH=$HULEXEP:$PATH
+utlsend -f SAMPLE01 -sync</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">直近の転送結果だけを確認</div><div class="tags"></div></div>
+<div class="code"><pre>utllist -s -f SAMPLE01 | tail -5        # 配信側
+utllist -r -f SAMPLE01 | tail -5        # 集信側</pre></div></div>
+
+<h3 class="sub">6-3. 管理情報の比較・移行</h3>
+<div class="cmd"><div class="head"><div class="title">環境間（本番・検証）の管理情報の差分</div><div class="tags"><span class="tag">bash</span></div></div>
+<div class="desc">utligen で出力したパラメータファイルを比較すると、設定漏れや環境差異を確認できます。</div>
+<div class="code"><pre>ssh prdhost 'utligen -f /tmp/snd_prd.prm -i snd -id "*"' &amp;&amp; scp prdhost:/tmp/snd_prd.prm .
+ssh stghost 'utligen -f /tmp/snd_stg.prm -i snd -id "*"' &amp;&amp; scp stghost:/tmp/snd_stg.prm .
+diff -u snd_stg.prm snd_prd.prm</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">管理情報を Git で構成管理</div><div class="tags"><span class="tag is">pkg: git</span></div></div>
+<div class="desc">定期的に utligen の結果をコミットしておくと、いつ・何が変わったかを追跡できます。</div>
+<div class="code"><pre>cd /opt/hulft-config &amp;&amp; for i in hst snd rcv job; do utligen -f mng_$i.prm -i $i -id "*"; done
+git add -A &amp;&amp; git commit -m "HULFT 管理情報 $(date +%F)"</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">特定 ID だけを別環境へ移行</div><div class="tags"><span class="tag adm">注意</span></div></div>
+<div class="desc"><code class="i">-r</code> 付きで登録すると、同じ ID の既存定義を置き換えます。</div>
+<div class="code"><pre>utligen -f snd_SAMPLE01.prm -i snd -id SAMPLE01     # 移行元
+utliupdt -f snd_SAMPLE01.prm -r                     # 移行先</pre></div></div>
+
+<h3 class="sub">6-4. 通信・運用の小技</h3>
+<div class="cmd"><div class="head"><div class="title">転送中の TCP 接続を確認</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc">転送が滞留しているときに、相手との接続が張られているかを確認します。</div>
+<div class="code"><pre>ss -tnp '( sport = :30000 or dport = :30000 )'</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">相手ホスト名の解決結果を確認</div><div class="tags"></div></div>
+<div class="desc">詳細ホスト情報に登録したホスト名が、意図した IP に解決されるか確認します（hosts と DNS の食い違いに注意）。</div>
+<div class="code"><pre>getent hosts recvhost
+grep -i recvhost /etc/hosts</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">受信ディレクトリの空き容量を事前確認</div><div class="tags"></div></div>
+<div class="desc">集信ファイルの書き込み失敗（容量不足）を事前に防ぎます。</div>
+<div class="code"><pre>df -h /data/recv
+du -sh /data/recv</pre></div></div>
+
+</section>
 <!-- ================= 付録 ================= -->
 <section class="case" id="evidence">
 <h2><span class="num">A</span>構成情報一括取得スクリプト</h2>
