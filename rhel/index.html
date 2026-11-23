@@ -85,6 +85,7 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);marg
 <nav class="toc" aria-label="目次">
   <a href="#build"><span class="n">01</span>構築時のコマンド</a><a href="#config"><span class="n">02</span>構築完了後の構成情報の取得</a><a href="#perf"><span class="n">03</span>性能情報の取得</a><a href="#trouble"><span class="n">04</span>障害時の調査</a>
   <a href="#patch"><span class="n">05</span>パッチ適用・アップデート</a><a href="#backup"><span class="n">06</span>バックアップ・リストア</a><a href="#ops"><span class="n">07</span>停止・再起動・日常運用</a><a href="#container"><span class="n">08</span>コンテナ(Podman)</a>
+  <a href="#tips"><span class="n">09</span>知っておくと便利なコマンド</a>
   <div class="grp">付録</div>
   <a href="#evidence"><span class="n">A</span>エビデンス一括取得スクリプト</a>
   <a href="#notes"><span class="n">B</span>利用上の注意</a>
@@ -685,6 +686,155 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);marg
 <div class="code"><pre>systemctl --user status &lt;quadlet-unit&gt;</pre></div></div>
 </section>
 
+<!-- ================= 09 便利コマンド ================= -->
+<section class="case" id="tips">
+<h2><span class="num">09</span>知っておくと便利なコマンド <span class="tag" style="font-size:12px">追加</span></h2>
+<p class="lead">作業ログの記録、変更を安全に戻せるようにする仕組み、サーバー間の差分チェックなど、知っていると作業効率と品質が大きく変わるコマンドです。</p>
+
+<h3 class="sub">9-1. 作業を効率よく・記録を残す</h3>
+<div class="cmd"><div class="head"><div class="title">ターミナル操作をまるごと記録（作業エビデンス）</div><div class="tags"><span class="tag">bash</span></div></div>
+<div class="desc"><code class="i">exit</code> するまでの入力と出力がすべてファイルに残ります。作業前に実行しておくと、手順書との突き合わせや障害時の振り返りに使えます。</div>
+<div class="code"><pre>script -a /var/tmp/work_$(hostname -s)_$(date +%Y%m%d_%H%M).log
+# ... 作業 ...
+exit</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">SSH が切れても作業を継続（tmux）</div><div class="tags"><span class="tag is">pkg: tmux</span></div></div>
+<div class="desc">長時間かかる処理（dnf update・バックアップなど）は tmux の中で実行すると、回線断でも止まりません。</div>
+<div class="code"><pre>tmux new -s work        # セッション開始
+# Ctrl+b → d でデタッチ（処理は継続）
+tmux ls                 # セッション一覧
+tmux attach -t work     # 再接続</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">コマンド履歴に実行日時を残す</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc">全ユーザーの history に日時が付きます。誰がいつ何を実行したかの調査に役立ちます。</div>
+<div class="code"><pre>echo 'export HISTTIMEFORMAT="%F %T "' &gt; /etc/profile.d/histtime.sh
+echo 'export HISTSIZE=10000' &gt;&gt; /etc/profile.d/histtime.sh
+history | tail -20      # 再ログイン後に確認</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">変化をハイライトしながら定期実行</div><div class="tags"></div></div>
+<div class="desc"><code class="i">-d</code> で前回との差分が強調表示されます。切替試験や負荷試験の監視に便利です。</div>
+<div class="code"><pre>watch -n 2 -d 'ss -s; free -h'
+watch -n 5 -d 'systemctl is-active httpd chronyd sshd'</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">応答しないコマンドに制限時間を付ける</div><div class="tags"></div></div>
+<div class="desc">NFS のハングや名前解決待ちで、スクリプト全体が止まるのを防ぎます。</div>
+<div class="code"><pre>timeout 10 df -h          # 10秒で打ち切り（終了コード 124）
+timeout 5 getent hosts db01.example.com || echo "名前解決NG"</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">踏み台経由で一発ログイン</div><div class="tags"></div></div>
+<div class="desc"><code class="i">~/.ssh/config</code> に書いておくと、scp・rsync も踏み台経由で使えます。</div>
+<div class="code"><pre>ssh -J bastion.example.com web01.example.com
+
+# ~/.ssh/config
+Host web*
+  ProxyJump bastion.example.com
+  User opsuser</pre></div></div>
+
+<h3 class="sub">9-2. サーバー間の差分チェック・標準化</h3>
+<div class="cmd"><div class="head"><div class="title">2台のサーバーのパッケージ差分</div><div class="tags"><span class="tag">bash</span></div></div>
+<div class="desc">「同じ構成のはずのサーバー」の差異を一発で確認できます。プロセス置換 <code class="i">&lt;( )</code> で一時ファイルが不要です。</div>
+<div class="code"><pre>diff &lt;(ssh web01 "rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}\n' | sort") \
+     &lt;(ssh web02 "rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}\n' | sort")</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">設定ファイル・パラメータの差分</div><div class="tags"><span class="tag">bash</span></div></div>
+<div class="code"><pre>diff &lt;(ssh web01 'sysctl -a 2&gt;/dev/null | sort') &lt;(ssh web02 'sysctl -a 2&gt;/dev/null | sort')
+diff &lt;(ssh web01 cat /etc/chrony.conf) &lt;(ssh web02 cat /etc/chrony.conf)</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">複数サーバーで同じコマンドを実行</div><div class="tags"><span class="tag">bash</span></div></div>
+<div class="desc">結果の先頭にホスト名を付けて一覧にします。</div>
+<div class="code"><pre>for h in web01 web02 web03; do
+  ssh -o ConnectTimeout=5 $h 'uptime; getenforce' | sed "s/^/[$h] /"
+done</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">Ansible でドライラン（変更せずに差分だけ確認）</div><div class="tags"><span class="tag is">pkg: ansible-core</span></div></div>
+<div class="desc"><code class="i">--check --diff</code> で、どのファイルがどう変わるかを適用前に確認できます。RHEL のシステムロール（timesync・selinux・firewall など）を使うと標準設定をコード化できます。</div>
+<div class="code"><pre>dnf install -y ansible-core rhel-system-roles
+ansible-playbook -i inventory site.yml --check --diff
+ansible all -i inventory -m setup -a "filter=ansible_distribution*"</pre></div></div>
+
+<h3 class="sub">9-3. 安全に変更する・戻せるようにする</h3>
+<div class="cmd"><div class="head"><div class="title">systemd の設定はドロップインで上書き</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc">元のユニットファイルを直接編集せずに設定を追加できます。パッケージ更新で上書きされません。</div>
+<div class="code"><pre>systemctl edit httpd          # /etc/systemd/system/httpd.service.d/override.conf を作成
+systemctl cat httpd           # 元ファイル＋上書き分をまとめて表示
+systemctl daemon-reload &amp;&amp; systemctl restart httpd</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">変更前の構文チェック</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc">再起動前に構文エラーを検出し、サービス停止を防ぎます。</div>
+<div class="code"><pre>visudo -c                               # sudoers
+sshd -t                                 # sshd_config
+systemd-analyze verify /etc/systemd/system/myapp.service
+firewall-cmd --check-config             # firewalld
+named-checkconf / httpd -t / nginx -t   # 各サービスの構文チェック</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">SELinux ラベル変更のドライラン</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc"><code class="i">-n</code> で、実際には変更せずに変更対象だけを表示します。</div>
+<div class="code"><pre>restorecon -Rvn /web</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">リモートでのネットワーク変更に「自動戻し」を仕掛ける</div><div class="tags"><span class="tag au">root</span><span class="tag is">pkg: at</span><span class="tag adm">注意</span></div></div>
+<div class="desc">設定ミスで SSH が切れても、5分後に自動で元の設定に戻ります。成功したら <code class="i">atrm</code> で取り消します。</div>
+<div class="code"><pre>systemctl enable --now atd
+echo 'nmcli con load /root/ens3.nmconnection.bak; nmcli con up ens3' | at now + 5 minutes
+atq                # 予約の確認
+# ... nmcli で変更し、接続できることを確認したら ...
+atrm &lt;ジョブ番号&gt;</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">ファイルを権限付きで配置（何度実行しても同じ結果）</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="desc">cp＋chmod＋chown を1行で。構築スクリプトの冪等化に使えます。</div>
+<div class="code"><pre>install -D -m 0644 -o root -g root ./chrony.conf /etc/chrony.conf
+install -d -m 0750 -o app -g app /data/app/logs</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">このファイルはどのパッケージのもの？</div><div class="tags"></div></div>
+<div class="code"><pre>rpm -qf /etc/chrony.conf        # ファイル → パッケージ
+rpm -qc chrony                  # パッケージの設定ファイル一覧
+dnf provides "*/bin/dig"        # コマンド → 提供パッケージ</pre></div></div>
+
+<h3 class="sub">9-4. 動作確認・テスト</h3>
+<div class="cmd"><div class="head"><div class="title">アプリ導入前にポートの疎通を確認（仮の待ち受け）</div><div class="tags"><span class="tag is">pkg: nmap-ncat</span></div></div>
+<div class="desc">アプリが未導入でも、ファイアウォールや経路の確認ができます。</div>
+<div class="code"><pre>ncat -l -k 8080                 # サーバー側：8080で待ち受け
+ncat -vz web01.example.com 8080 # クライアント側：疎通確認</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">HTTP の応答時間を内訳付きで計測</div><div class="tags"></div></div>
+<div class="code"><pre>curl -o /dev/null -s -w 'code=%{http_code} dns=%{time_namelookup} connect=%{time_connect} tls=%{time_appconnect} total=%{time_total}\n' https://web01.example.com/</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">SSL 証明書の有効期限・チェーンの確認</div><div class="tags"></div></div>
+<div class="code"><pre>echo | openssl s_client -connect web01.example.com:443 -servername web01.example.com 2&gt;/dev/null \
+  | openssl x509 -noout -subject -issuer -dates
+openssl x509 -in /etc/pki/tls/certs/server.crt -noout -enddate</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">起動時間のボトルネック</div><div class="tags"></div></div>
+<div class="desc">再起動に時間がかかるときの原因調査に使います。</div>
+<div class="code"><pre>systemd-analyze                 # 起動にかかった時間
+systemd-analyze blame | head    # 時間がかかったユニット
+systemd-analyze critical-chain</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">どのポートをどのプロセスが使っているか</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>lsof -i :443
+ss -tlnp sport = :443</pre></div></div>
+
+<h3 class="sub">9-5. 運用の小技</h3>
+<div class="cmd"><div class="head"><div class="title">journal の容量確認と削減</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>journalctl --disk-usage
+journalctl --vacuum-time=30d     # 30日より古いログを削除
+journalctl --vacuum-size=1G</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">大きいファイル・最近更新されたファイルを探す</div><div class="tags"><span class="tag au">root</span></div></div>
+<div class="code"><pre>find / -xdev -type f -size +1G -exec ls -lh {} \; 2&gt;/dev/null
+find /etc -type f -mmin -60       # 60分以内に更新された設定ファイル</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">cgroup 単位のリソース使用量（サービス別）</div><div class="tags"></div></div>
+<div class="desc">どのサービスが CPU・メモリを使っているかを systemd のサービス単位で確認できます。</div>
+<div class="code"><pre>systemd-cgtop -d 2</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">推奨される tuned プロファイル</div><div class="tags"></div></div>
+<div class="code"><pre>tuned-adm recommend
+tuned-adm verify          # 現在の設定がプロファイル通りか検証</pre></div></div>
+
+<div class="cmd"><div class="head"><div class="title">自分が sudo で実行できるコマンド</div><div class="tags"></div></div>
+<div class="code"><pre>sudo -l</pre></div></div>
+
+</section>
 <!-- ================= 付録 ================= -->
 <section class="case" id="evidence">
 <h2><span class="num">A</span>エビデンス一括取得スクリプト</h2>
